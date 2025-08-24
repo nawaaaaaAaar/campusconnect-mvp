@@ -12,7 +12,7 @@ export function AuthCallback() {
   useEffect(() => {
     async function handleAuthCallback() {
       try {
-        // Check for error in URL parameters (from OAuth)
+        // Check for error in URL parameters
         const error = searchParams.get('error')
         const errorDescription = searchParams.get('error_description')
         
@@ -23,7 +23,49 @@ export function AuthCallback() {
           return
         }
 
-        // Handle OAuth session from URL hash or search params
+        // Check if this is an email confirmation (has token_hash and type params)
+        const tokenHash = searchParams.get('token_hash')
+        const type = searchParams.get('type')
+        
+        if (tokenHash && type) {
+          console.log('Processing email confirmation with token:', tokenHash, 'type:', type)
+          
+          // Handle email confirmation
+          const { data, error: verifyError } = await supabase.auth.verifyOtp({
+            token_hash: tokenHash,
+            type: type as any
+          })
+          
+          if (verifyError) {
+            console.error('Email verification error:', verifyError)
+            toast.error('Email verification failed. Please try again.')
+            navigate('/auth')
+            return
+          }
+          
+          if (data.session && data.session.user) {
+            console.log('Email confirmed, user authenticated:', data.session.user.email)
+            toast.success(`Email confirmed! Welcome, ${data.session.user.email}!`)
+            
+            // Check if user needs profile setup
+            try {
+              const { getUserProfile } = await import('../../lib/supabase')
+              const profile = await getUserProfile()
+              
+              if (!profile || !profile.profile_complete) {
+                navigate('/profile-setup')
+              } else {
+                navigate('/dashboard')
+              }
+            } catch (profileError) {
+              // If profile doesn't exist or error, go to profile setup
+              navigate('/profile-setup')
+            }
+            return
+          }
+        }
+
+        // Handle OAuth session (existing logic)
         const { data, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
@@ -34,9 +76,23 @@ export function AuthCallback() {
         }
 
         if (data.session && data.session.user) {
-          console.log('User authenticated:', data.session.user.email)
+          console.log('User authenticated via OAuth:', data.session.user.email)
           toast.success(`Welcome back, ${data.session.user.email}!`)
-          navigate('/dashboard')
+          
+          // Check if user needs profile setup
+          try {
+            const { getUserProfile } = await import('../../lib/supabase')
+            const profile = await getUserProfile()
+            
+            if (!profile || !profile.profile_complete) {
+              navigate('/profile-setup')
+            } else {
+              navigate('/dashboard')
+            }
+          } catch (profileError) {
+            // If profile doesn't exist or error, go to profile setup
+            navigate('/profile-setup')
+          }
         } else {
           // If no session, redirect to auth
           navigate('/auth')

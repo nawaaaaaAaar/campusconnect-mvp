@@ -19,7 +19,7 @@ export async function signInWithEmail(email: string) {
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: `${window.location.protocol}//${window.location.host}/auth/callback`
+      emailRedirectTo: 'https://4z8jebr0nrra.space.minimax.io/auth/callback'
     }
   })
 
@@ -50,7 +50,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.protocol}//${window.location.host}/auth/callback`
+      redirectTo: 'https://4z8jebr0nrra.space.minimax.io/auth/callback'
     }
   })
 
@@ -67,7 +67,7 @@ export async function signUpWithPassword(email: string, password: string) {
     email,
     password,
     options: {
-      emailRedirectTo: `${window.location.protocol}//${window.location.host}/auth/callback`
+      emailRedirectTo: 'https://vuccglynb7i3.space.minimax.io/auth/callback'
     }
   })
 
