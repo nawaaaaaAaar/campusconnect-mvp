@@ -19,7 +19,7 @@ export async function signInWithEmail(email: string) {
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: 'https://4z8jebr0nrra.space.minimax.io/auth/callback'
+      emailRedirectTo: 'https://campusconnect-mvp.vercel.app/auth/callback'
     }
   })
 
@@ -50,7 +50,7 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: 'https://4z8jebr0nrra.space.minimax.io/auth/callback'
+      redirectTo: 'https://campusconnect-mvp.vercel.app/auth/callback'
     }
   })
 
@@ -67,7 +67,7 @@ export async function signUpWithPassword(email: string, password: string) {
     email,
     password,
     options: {
-      emailRedirectTo: 'https://vuccglynb7i3.space.minimax.io/auth/callback'
+      emailRedirectTo: 'https://campusconnect-mvp.vercel.app/auth/callback'
     }
   })
 
