@@ -194,7 +194,6 @@ export function HomeFeed() {
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading your personalized feed...</p>
-          <p className="text-sm text-gray-500 mt-1">Applying 2F:1G algorithm</p>
         </div>
       </div>
     )
@@ -284,18 +283,6 @@ export function HomeFeed() {
           </Button>
         </div>
       )}
-
-      {/* Algorithm Attribution */}
-      <div className="text-center py-4 border-t border-gray-100">
-        <p className="text-xs text-gray-500">
-          Powered by CampusConnect's 2F:1G Algorithm
-        </p>
-        {feedData?.meta.ratio_achieved && (
-          <p className="text-xs text-gray-400 mt-1">
-            {Math.round(feedData.meta.ratio_achieved.followed * 100)}% Following • {Math.round(feedData.meta.ratio_achieved.global * 100)}% Discover
-          </p>
-        )}
-      </div>
     </div>
   )
 }

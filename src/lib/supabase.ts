@@ -125,6 +125,7 @@ export async function createOrUpdateProfile(profileData: {
   campus?: string
   year?: string
   interests?: string[]
+  account_type?: 'student' | 'society'
 }) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('User not authenticated')

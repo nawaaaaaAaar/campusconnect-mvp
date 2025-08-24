@@ -53,6 +53,35 @@ Deno.serve(async (req) => {
                 });
             }
             
+            // Check user account type - only societies can create posts
+            const profileResponse = await fetch(
+                `${supabaseUrl}/rest/v1/profiles?user_id=eq.${userId}&select=account_type`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'apikey': serviceRoleKey
+                    }
+                }
+            );
+            
+            if (profileResponse.ok) {
+                const profiles = await profileResponse.json();
+                if (profiles.length > 0) {
+                    const accountType = profiles[0].account_type;
+                    if (accountType !== 'society') {
+                        return new Response(JSON.stringify({
+                            error: { 
+                                code: 'FORBIDDEN', 
+                                message: 'Only society accounts can create posts. Students can like, comment, and share posts.' 
+                            }
+                        }), {
+                            status: 403,
+                            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                        });
+                    }
+                }
+            }
+            
             const { society_id, type, text, media_url, link_url } = await req.json();
             
             // Validate required fields

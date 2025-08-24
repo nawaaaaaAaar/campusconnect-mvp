@@ -19,7 +19,7 @@ import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 
 export function Dashboard() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const { unreadCount, loadUnreadCount } = useNotifications()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('home')
@@ -151,15 +151,17 @@ export function Dashboard() {
             </div>
             
             <div className="flex items-center space-x-4">
-              {/* Create Post Button */}
-              <Button 
-                onClick={() => setShowPostForm(true)}
-                className="bg-green-600 hover:bg-green-700"
-                size="sm"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Post
-              </Button>
+              {/* Create Post Button - Only show for society accounts */}
+              {profile?.account_type === 'society' && (
+                <Button 
+                  onClick={() => setShowPostForm(true)}
+                  className="bg-green-600 hover:bg-green-700"
+                  size="sm"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Post
+                </Button>
+              )}
 
               {/* Notifications Bell */}
               <Button 
@@ -250,30 +252,18 @@ export function Dashboard() {
             <div className="mb-6">
               <div className="text-center mb-4">
                 <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Your Personal Campus Feed
+                  {profile?.account_type === 'society' 
+                    ? 'Share Updates with Your Community' 
+                    : 'Your Personal Campus Feed'
+                  }
                 </h2>
                 <p className="text-gray-600 mt-1">
-                  Discover what's happening in your followed societies and across campus
+                  {profile?.account_type === 'society'
+                    ? 'Create posts to engage with your followers and grow your community'
+                    : 'Discover what\'s happening in your followed societies and across campus'
+                  }
                 </p>
               </div>
-              
-              {/* Feature Highlight */}
-              <Card className="bg-gradient-to-r from-blue-500 to-purple-600 text-white mb-6">
-                <CardContent className="py-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold mb-1">Powered by 2F:1G Algorithm</h3>
-                      <p className="text-blue-100 text-sm">
-                        70% posts from societies you follow, 30% discovery content - perfectly balanced for engagement
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold">2F:1G</p>
-                      <p className="text-blue-100 text-xs">Smart Feed</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
             
             <HomeFeed />

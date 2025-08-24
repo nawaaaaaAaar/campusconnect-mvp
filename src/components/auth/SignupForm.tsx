@@ -4,15 +4,16 @@ import { Input } from '../ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
-import { signInWithGoogle } from '../../lib/supabase'
+import { signInWithGoogle, createOrUpdateProfile } from '../../lib/supabase'
 import { toast } from 'sonner'
 
 interface SignupFormProps {
+  accountType: 'student' | 'society'
   onBack: () => void
   onSuccess: () => void
 }
 
-export function SignupForm({ onBack, onSuccess }: SignupFormProps) {
+export function SignupForm({ accountType, onBack, onSuccess }: SignupFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -45,10 +46,22 @@ export function SignupForm({ onBack, onSuccess }: SignupFormProps) {
     try {
       const result = await signUp(email, password)
       
-      if (result.user && !result.user.email_confirmed_at) {
-        toast.success('Check your email for a confirmation link!')
-      } else {
-        toast.success('Account created successfully!')
+      if (result.user) {
+        // Create profile with account type after successful signup
+        try {
+          await createOrUpdateProfile({
+            display_name: email.split('@')[0], // Use email prefix as initial display name
+            account_type: accountType
+          })
+        } catch (profileError) {
+          console.warn('Profile creation failed, but signup succeeded:', profileError)
+        }
+        
+        if (!result.user.email_confirmed_at) {
+          toast.success('Check your email for a confirmation link!')
+        } else {
+          toast.success('Account created successfully!')
+        }
       }
       
       onSuccess()
@@ -80,8 +93,10 @@ export function SignupForm({ onBack, onSuccess }: SignupFormProps) {
         <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
           <span className="text-white font-bold text-xl">CC</span>
         </div>
-        <CardTitle className="text-2xl font-bold">Create Your Account</CardTitle>
-        <CardDescription>Join the CampusConnect community</CardDescription>
+        <CardTitle className="text-2xl font-bold">Create Your {accountType === 'society' ? 'Society' : 'Student'} Account</CardTitle>
+        <CardDescription>
+          Join CampusConnect as a {accountType === 'society' ? 'society to share updates and engage with students' : 'student to discover societies and connect with campus life'}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <form onSubmit={handleSignUp} className="space-y-4">

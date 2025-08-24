@@ -2,12 +2,14 @@ import React, { useState } from 'react'
 import { LoginForm } from '../components/auth/LoginForm'
 import { SignupForm } from '../components/auth/SignupForm'
 import { OTPForm } from '../components/auth/OTPForm'
+import { AccountTypeSelection } from '../components/auth/AccountTypeSelection'
 
-type AuthStep = 'login' | 'signup' | 'otp'
+type AuthStep = 'login' | 'account-type' | 'signup' | 'otp'
 
 export function AuthPage() {
   const [currentStep, setCurrentStep] = useState<AuthStep>('login')
   const [email, setEmail] = useState('')
+  const [accountType, setAccountType] = useState<'student' | 'society' | null>(null)
 
   const handleSwitchToOTP = (userEmail: string) => {
     setEmail(userEmail)
@@ -15,12 +17,23 @@ export function AuthPage() {
   }
 
   const handleSwitchToSignup = () => {
+    setCurrentStep('account-type')
+  }
+
+  const handleAccountTypeSelection = (type: 'student' | 'society') => {
+    setAccountType(type)
     setCurrentStep('signup')
   }
 
   const handleBackToLogin = () => {
     setCurrentStep('login')
     setEmail('')
+    setAccountType(null)
+  }
+
+  const handleBackToAccountType = () => {
+    setCurrentStep('account-type')
+    setAccountType(null)
   }
 
   const handleSignupSuccess = () => {
@@ -36,9 +49,16 @@ export function AuthPage() {
           onSwitchToSignup={handleSwitchToSignup}
         />
       )}
-      {currentStep === 'signup' && (
-        <SignupForm 
+      {currentStep === 'account-type' && (
+        <AccountTypeSelection
+          onSelectType={handleAccountTypeSelection}
           onBack={handleBackToLogin}
+        />
+      )}
+      {currentStep === 'signup' && accountType && (
+        <SignupForm 
+          accountType={accountType}
+          onBack={handleBackToAccountType}
           onSuccess={handleSignupSuccess}
         />
       )}

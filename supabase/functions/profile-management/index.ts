@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
     if (req.method === 'POST' || req.method === 'PUT') {
       // Create or update user profile
       const requestData = await req.json();
-      const { display_name, bio, avatar_url, campus, year, interests } = requestData;
+      const { display_name, bio, avatar_url, campus, year, interests, account_type } = requestData;
 
       const profileData = {
         user_id: userId,
@@ -79,6 +79,7 @@ Deno.serve(async (req) => {
         campus,
         year,
         interests,
+        account_type: account_type || 'student',
         profile_complete: !!(display_name && campus),
         updated_at: new Date().toISOString()
       };

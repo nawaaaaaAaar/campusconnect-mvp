@@ -11,6 +11,7 @@ interface UserProfile {
   campus?: string
   year?: string
   interests?: string[]
+  account_type: 'student' | 'society'
   profile_complete: boolean
   created_at: string
   updated_at: string
