@@ -2,36 +2,62 @@ import React, { useState } from 'react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
-import { Loader2, Mail } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
+import { Loader2, Mail, Eye, EyeOff, UserPlus } from 'lucide-react'
 import { signInWithEmail, signInWithGoogle } from '../../lib/supabase'
+import { useAuth } from '../../contexts/AuthContext'
 import { toast } from 'sonner'
 
 interface LoginFormProps {
   onSwitchToOTP: (email: string) => void
+  onSwitchToSignup: () => void
 }
 
-export function LoginForm({ onSwitchToOTP }: LoginFormProps) {
+export function LoginForm({ onSwitchToOTP, onSwitchToSignup }: LoginFormProps) {
   const [email, setEmail] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [otpLoading, setOtpLoading] = useState(false)
+  const [passwordLoading, setPasswordLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const { signIn } = useAuth()
 
-  const handleEmailAuth = async (e: React.FormEvent) => {
+  const handleEmailOTP = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email) {
       toast.error('Please enter your email')
       return
     }
 
-    setLoading(true)
+    setOtpLoading(true)
     try {
       await signInWithEmail(email)
       toast.success('Check your email for the login code!')
       onSwitchToOTP(email)
     } catch (error: any) {
-      console.error('Email auth error:', error)
+      console.error('Email OTP error:', error)
       toast.error(error.message || 'Failed to send login code')
     } finally {
-      setLoading(false)
+      setOtpLoading(false)
+    }
+  }
+
+  const handlePasswordSignIn = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email || !password) {
+      toast.error('Please enter both email and password')
+      return
+    }
+
+    setPasswordLoading(true)
+    try {
+      await signIn(email, password)
+      toast.success('Signed in successfully!')
+    } catch (error: any) {
+      console.error('Password sign in error:', error)
+      toast.error(error.message || 'Invalid email or password')
+    } finally {
+      setPasswordLoading(false)
     }
   }
 
@@ -54,39 +80,94 @@ export function LoginForm({ onSwitchToOTP }: LoginFormProps) {
         <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
           <span className="text-white font-bold text-xl">CC</span>
         </div>
-        <CardTitle className="text-2xl font-bold">Welcome to CampusConnect</CardTitle>
-        <CardDescription>Connect with your campus community</CardDescription>
+        <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
+        <CardDescription>Sign in to your CampusConnect account</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <form onSubmit={handleEmailAuth} className="space-y-4">
-          <div className="space-y-2">
-            <Input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full"
-            />
-          </div>
-          <Button 
-            type="submit" 
-            className="w-full"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Sending Code...
-              </>
-            ) : (
-              <>
-                <Mail className="mr-2 h-4 w-4" />
-                Continue with Email
-              </>
-            )}
-          </Button>
-        </form>
+        <Tabs defaultValue="password" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="password">Password</TabsTrigger>
+            <TabsTrigger value="otp">Email Code</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="password" className="space-y-4 mt-4">
+            <form onSubmit={handlePasswordSignIn} className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full"
+                />
+              </div>
+              <div className="space-y-2 relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full pr-12"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={passwordLoading}
+              >
+                {passwordLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing In...
+                  </>
+                ) : (
+                  'Sign In'
+                )}
+              </Button>
+            </form>
+          </TabsContent>
+          
+          <TabsContent value="otp" className="space-y-4 mt-4">
+            <form onSubmit={handleEmailOTP} className="space-y-4">
+              <div className="space-y-2">
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full"
+                />
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={otpLoading}
+              >
+                {otpLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending Code...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Send Login Code
+                  </>
+                )}
+              </Button>
+            </form>
+          </TabsContent>
+        </Tabs>
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center">
@@ -132,6 +213,17 @@ export function LoginForm({ onSwitchToOTP }: LoginFormProps) {
             </>
           )}
         </Button>
+
+        <div className="text-center">
+          <Button 
+            variant="link" 
+            className="text-sm text-muted-foreground hover:text-primary"
+            onClick={onSwitchToSignup}
+          >
+            <UserPlus className="mr-2 h-4 w-4" />
+            Don't have an account? Sign up
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )

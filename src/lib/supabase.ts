@@ -62,6 +62,94 @@ export async function signInWithGoogle() {
   return data
 }
 
+export async function signUpWithPassword(email: string, password: string) {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${window.location.protocol}//${window.location.host}/auth/callback`
+    }
+  })
+
+  if (error) {
+    console.error('Error signing up:', error.message)
+    throw error
+  }
+
+  return data
+}
+
+export async function signInWithPassword(email: string, password: string) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  })
+
+  if (error) {
+    console.error('Error signing in:', error.message)
+    throw error
+  }
+
+  return data
+}
+
+// Profile management functions
+export async function getUserProfile() {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('User not authenticated')
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('No active session')
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/profile-management`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json'
+    }
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error?.message || 'Failed to fetch profile')
+  }
+
+  const result = await response.json()
+  return result.data
+}
+
+export async function createOrUpdateProfile(profileData: {
+  display_name?: string
+  bio?: string
+  avatar_url?: string
+  campus?: string
+  year?: string
+  interests?: string[]
+}) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('User not authenticated')
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('No active session')
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/profile-management`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(profileData)
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(errorData.error?.message || 'Failed to save profile')
+  }
+
+  const result = await response.json()
+  return result.data
+}
+
 export async function signOut() {
   const { error } = await supabase.auth.signOut()
   if (error) {

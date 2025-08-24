@@ -6,6 +6,7 @@ import { ProtectedRoute } from './components/ProtectedRoute'
 import { AuthPage } from './pages/AuthPage'
 import { Dashboard } from './pages/Dashboard'
 import { AuthCallback } from './components/auth/AuthCallback'
+import { ProfileSetup } from './components/auth/ProfileSetup'
 import './App.css'
 
 function App() {
@@ -18,7 +19,17 @@ function App() {
             <Route path="/auth" element={<AuthPage />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
             
-            {/* Protected routes */}
+            {/* Profile setup route - requires auth but not complete profile */}
+            <Route 
+              path="/profile-setup" 
+              element={
+                <ProtectedRoute requireProfile={false}>
+                  <ProfileSetup />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Protected routes - require auth and complete profile */}
             <Route 
               path="/dashboard" 
               element={

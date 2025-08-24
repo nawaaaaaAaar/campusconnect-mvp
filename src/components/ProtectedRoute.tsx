@@ -6,13 +6,14 @@ import { Loader2 } from 'lucide-react'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
+  requireProfile?: boolean
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth()
+export function ProtectedRoute({ children, requireProfile = true }: ProtectedRouteProps) {
+  const { user, profile, loading, profileLoading } = useAuth()
   const location = useLocation()
 
-  if (loading) {
+  if (loading || profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
         <Card className="w-full max-w-md">
@@ -36,6 +37,14 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   if (!user) {
     // Redirect to auth page but save the attempted location
     return <Navigate to="/auth" state={{ from: location }} replace />
+  }
+
+  // Check if profile is required and not complete
+  if (requireProfile && (!profile || !profile.profile_complete)) {
+    // Don't redirect if we're already on the profile setup page
+    if (location.pathname !== '/profile-setup') {
+      return <Navigate to="/profile-setup" replace />
+    }
   }
 
   return <>{children}</>
