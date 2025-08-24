@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -8,10 +8,47 @@ import { toast } from 'sonner'
 export function AuthCallback() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const location = useLocation()
 
   useEffect(() => {
     async function handleAuthCallback() {
       try {
+        // Handle hash-based authentication (OAuth)
+        if (location.hash) {
+          console.log('Processing OAuth callback with hash:', location.hash)
+          
+          // Let Supabase handle the OAuth callback automatically
+          const { data, error } = await supabase.auth.getSession()
+          
+          if (error) {
+            console.error('OAuth session error:', error)
+            toast.error('OAuth authentication failed')
+            navigate('/auth')
+            return
+          }
+
+          if (data.session && data.session.user) {
+            console.log('OAuth user authenticated:', data.session.user.email)
+            toast.success(`Welcome, ${data.session.user.email || data.session.user.user_metadata?.name}!`)
+            
+            // Check if user needs profile setup
+            try {
+              const { getUserProfile } = await import('../../lib/supabase')
+              const profile = await getUserProfile()
+              
+              if (!profile || !profile.profile_complete) {
+                navigate('/profile-setup')
+              } else {
+                navigate('/dashboard')
+              }
+            } catch (profileError) {
+              console.log('No profile found, redirecting to profile setup')
+              navigate('/profile-setup')
+            }
+            return
+          }
+        }
+
         // Check for error in URL parameters
         const error = searchParams.get('error')
         const errorDescription = searchParams.get('error_description')
@@ -58,14 +95,14 @@ export function AuthCallback() {
                 navigate('/dashboard')
               }
             } catch (profileError) {
-              // If profile doesn't exist or error, go to profile setup
+              console.log('No profile found, redirecting to profile setup')
               navigate('/profile-setup')
             }
             return
           }
         }
 
-        // Handle OAuth session (existing logic)
+        // Handle regular session check for other cases
         const { data, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
@@ -76,8 +113,7 @@ export function AuthCallback() {
         }
 
         if (data.session && data.session.user) {
-          console.log('User authenticated via OAuth:', data.session.user.email)
-          toast.success(`Welcome back, ${data.session.user.email}!`)
+          console.log('User authenticated via session:', data.session.user.email)
           
           // Check if user needs profile setup
           try {
@@ -90,11 +126,12 @@ export function AuthCallback() {
               navigate('/dashboard')
             }
           } catch (profileError) {
-            // If profile doesn't exist or error, go to profile setup
+            console.log('No profile found, redirecting to profile setup')
             navigate('/profile-setup')
           }
         } else {
           // If no session, redirect to auth
+          console.log('No session found, redirecting to auth')
           navigate('/auth')
         }
       } catch (error: any) {
@@ -105,7 +142,7 @@ export function AuthCallback() {
     }
 
     handleAuthCallback()
-  }, [navigate, searchParams])
+  }, [navigate, searchParams, location.hash])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50">
