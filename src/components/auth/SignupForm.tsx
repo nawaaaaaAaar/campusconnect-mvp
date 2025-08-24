@@ -198,7 +198,6 @@ export function SignupForm({ onBack, onSuccess }: SignupFormProps) {
           onClick={onBack}
           disabled={loading || googleLoading}
         >
-        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Sign In
         </Button>
