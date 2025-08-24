@@ -11,6 +11,7 @@ import { Badge } from './ui/badge'
 import { X, Image, Video, Link, Calendar, Upload, Loader2, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 
 interface PostCreationFormProps {
   onSuccess?: () => void
@@ -27,6 +28,7 @@ interface PostFormData {
 }
 
 export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps) {
+  const { profile } = useAuth()
   const [postType, setPostType] = useState<'text' | 'image' | 'video' | 'link' | 'event'>('text')
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
@@ -35,6 +37,28 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
   const [societies, setSocieties] = useState<any[]>([])
   const [loadingSocieties, setLoadingSocieties] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Check account type - only societies can create posts
+  if (profile?.account_type !== 'society') {
+    return (
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardContent className="py-12 text-center">
+          <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Post Creation Not Available
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Only society accounts can create posts. As a student, you can like, comment, and share posts to engage with the campus community.
+          </p>
+          {onCancel && (
+            <Button onClick={onCancel} variant="outline">
+              Back to Dashboard
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
 
   const { register, handleSubmit, formState: { errors, isSubmitting }, watch, setValue, reset } = useForm<PostFormData>({
     defaultValues: {
