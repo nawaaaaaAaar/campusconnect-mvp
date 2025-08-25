@@ -1,117 +1,95 @@
-// Service Worker for push notifications
-self.addEventListener('install', (event) => {
-  console.log('Service Worker installing')
-  self.skipWaiting()
+// Firebase Cloud Messaging Service Worker
+// PRD Section 5.6: Web Push Notifications with quiet hours support
+
+importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js')
+importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js')
+
+// Firebase configuration - replace with actual values
+firebase.initializeApp({
+  apiKey: "demo-api-key",
+  authDomain: "campusconnect-demo.firebaseapp.com",
+  projectId: "campusconnect-demo",
+  storageBucket: "campusconnect-demo.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:demo"
 })
 
-self.addEventListener('activate', (event) => {
-  console.log('Service Worker activating')
-  event.waitUntil(self.clients.claim())
-})
+const messaging = firebase.messaging()
+
+// PRD Section 5.6: Quiet hours enforcement (22:00-07:00)
+function isQuietHours() {
+  const now = new Date()
+  const hour = now.getHours()
+  return hour >= 22 || hour < 7
+}
 
 // Handle background messages
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'BACKGROUND_MESSAGE') {
-    console.log('Background message received:', event.data.payload)
-    
-    // Handle the background message
-    const { title, body, icon, data } = event.data.payload
-    
-    // Show notification
-    self.registration.showNotification(title, {
-      body,
-      icon: icon || '/favicon.ico',
-      badge: '/favicon.ico',
-      data,
-      actions: [
-        {
-          action: 'view',
-          title: 'View'
-        },
-        {
-          action: 'dismiss',
-          title: 'Dismiss'
-        }
-      ]
-    })
+messaging.onBackgroundMessage((payload) => {
+  console.log('Received background message:', payload)
+  
+  // Check quiet hours - PRD requirement
+  if (isQuietHours() && !payload.data?.urgent) {
+    console.log('Notification suppressed due to quiet hours')
+    return
   }
+  
+  const notificationTitle = payload.notification?.title || 'CampusConnect'
+  const notificationOptions = {
+    body: payload.notification?.body || 'You have a new notification',
+    icon: '/favicon.ico',
+    badge: '/badge-icon.png',
+    tag: payload.data?.tag || 'default',
+    data: payload.data,
+    actions: [
+      {
+        action: 'view',
+        title: 'View',
+        icon: '/action-view.png'
+      },
+      {
+        action: 'dismiss',
+        title: 'Dismiss',
+        icon: '/action-dismiss.png'
+      }
+    ],
+    requireInteraction: payload.data?.priority === 'high'
+  }
+  
+  self.registration.showNotification(notificationTitle, notificationOptions)
 })
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
+  console.log('Notification click received:', event)
+  
   event.notification.close()
   
-  const action = event.action
-  const data = event.notification.data
-  
-  if (action === 'view' || !action) {
-    // Open the app or focus existing window
+  if (event.action === 'view') {
+    // Open the app at the relevant page
+    const urlToOpen = event.notification.data?.url || '/'
+    
     event.waitUntil(
-      self.clients.matchAll({ type: 'window' }).then((clients) => {
-        // Check if there is already a window/tab open with the target URL
-        for (const client of clients) {
-          if (client.url === '/' && 'focus' in client) {
-            return client.focus()
-          }
-        }
-        
-        // If no window/tab is already open, open a new one
-        if (self.clients.openWindow) {
-          let targetUrl = '/'
-          
-          // Navigate to specific page based on notification data
-          if (data && data.targetUrl) {
-            targetUrl = data.targetUrl
+      clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then((clientList) => {
+          // Check if a window is already open
+          for (const client of clientList) {
+            if (client.url.includes(self.location.origin) && 'focus' in client) {
+              client.postMessage({
+                type: 'NOTIFICATION_CLICK',
+                data: event.notification.data
+              })
+              return client.focus()
+            }
           }
           
-          return self.clients.openWindow(targetUrl)
-        }
-      })
+          // No window open, open new one
+          if (clients.openWindow) {
+            return clients.openWindow(urlToOpen)
+          }
+        })
     )
+  } else if (event.action === 'dismiss') {
+    // Just close the notification
+    console.log('Notification dismissed')
   }
 })
-
-// Handle push events (for future implementation with real push service)
-self.addEventListener('push', (event) => {
-  console.log('Push event received:', event)
-  
-  let notificationData = {
-    title: 'CampusConnect',
-    body: 'You have a new notification',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico'
-  }
-  
-  if (event.data) {
-    try {
-      const data = event.data.json()
-      notificationData = {
-        ...notificationData,
-        ...data
-      }
-    } catch (error) {
-      console.error('Error parsing push data:', error)
-    }
-  }
-  
-  event.waitUntil(
-    self.registration.showNotification(notificationData.title, {
-      body: notificationData.body,
-      icon: notificationData.icon,
-      badge: notificationData.badge,
-      data: notificationData.data,
-      actions: [
-        {
-          action: 'view',
-          title: 'View'
-        },
-        {
-          action: 'dismiss',
-          title: 'Dismiss'
-        }
-      ]
-    })
-  )
-})
-
-console.log('Firebase Messaging Service Worker loaded')

@@ -1,270 +1,321 @@
 import React, { useState, useEffect } from 'react'
-import { useNotifications } from '../hooks/useNotifications'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Switch } from './ui/switch'
-import { Label } from './ui/label'
-import { Input } from './ui/input'
-import { Separator } from './ui/separator'
-import { Bell, BellOff, Settings, Save, Loader2, Check } from 'lucide-react'
+import { Badge } from './ui/badge'
+import { Bell, BellOff, Moon, Smartphone, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { campusAPI } from '../lib/api'
+import { notificationService } from '../lib/notifications'
 import { toast } from 'sonner'
 
 interface NotificationPreferences {
+  push_enabled: boolean
+  email_enabled: boolean
   post_likes: boolean
   post_comments: boolean
-  new_followers: boolean
-  society_invites: boolean
-  society_posts: boolean
-  quiet_hours_start: string
-  quiet_hours_end: string
-  enabled: boolean
+  society_updates: boolean
+  invitations: boolean
+  quiet_hours_enabled: boolean
+  quiet_start: string
+  quiet_end: string
 }
 
 export function NotificationSettings() {
-  const { preferences, updatePreferences, loading } = useNotifications()
-  const [localPrefs, setLocalPrefs] = useState<NotificationPreferences | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [hasChanges, setHasChanges] = useState(false)
+  const [preferences, setPreferences] = useState<NotificationPreferences>({
+    push_enabled: true,
+    email_enabled: true,
+    post_likes: true,
+    post_comments: true,
+    society_updates: true,
+    invitations: true,
+    quiet_hours_enabled: true,
+    quiet_start: '22:00',
+    quiet_end: '07:00'
+  })
+  
+  const [fcmSettings, setFcmSettings] = useState({
+    isSupported: false,
+    permission: 'default' as NotificationPermission,
+    hasToken: false,
+    isQuietHours: false
+  })
+  
+  const [loading, setLoading] = useState(false)
+  const [initializing, setInitializing] = useState(false)
 
   useEffect(() => {
-    if (preferences && !localPrefs) {
-      setLocalPrefs(preferences)
-    }
-  }, [preferences, localPrefs])
+    loadPreferences()
+    updateFCMSettings()
+  }, [])
 
-  useEffect(() => {
-    if (preferences && localPrefs) {
-      const changed = JSON.stringify(preferences) !== JSON.stringify(localPrefs)
-      setHasChanges(changed)
+  const loadPreferences = async () => {
+    try {
+      const response = await campusAPI.getNotificationPreferences()
+      if (response.data) {
+        setPreferences({ ...preferences, ...response.data })
+      }
+    } catch (error: any) {
+      console.error('Failed to load notification preferences:', error)
     }
-  }, [preferences, localPrefs])
-
-  const handlePreferenceChange = (key: keyof NotificationPreferences, value: boolean | string) => {
-    if (!localPrefs) return
-    
-    setLocalPrefs({
-      ...localPrefs,
-      [key]: value
-    })
   }
 
-  const handleSave = async () => {
-    if (!localPrefs || !hasChanges) return
-    
-    setSaving(true)
+  const updateFCMSettings = () => {
+    const settings = notificationService.getSettings()
+    setFcmSettings(settings)
+  }
+
+  const updatePreferences = async (newPreferences: Partial<NotificationPreferences>) => {
+    setLoading(true)
     try {
-      await updatePreferences(localPrefs)
+      const updatedPrefs = { ...preferences, ...newPreferences }
+      await campusAPI.updateNotificationPreferences(updatedPrefs)
+      setPreferences(updatedPrefs)
       toast.success('Notification preferences updated')
-      setHasChanges(false)
     } catch (error: any) {
       toast.error('Failed to update preferences')
     } finally {
-      setSaving(false)
+      setLoading(false)
     }
   }
 
-  const handleReset = () => {
-    if (preferences) {
-      setLocalPrefs(preferences)
-      setHasChanges(false)
+  const initializePushNotifications = async () => {
+    setInitializing(true)
+    try {
+      const success = await notificationService.initialize()
+      if (success) {
+        updateFCMSettings()
+        await updatePreferences({ push_enabled: true })
+        toast.success('Push notifications enabled!')
+        
+        // Set up foreground handling
+        notificationService.setupForegroundHandling((payload) => {
+          toast.info(payload.notification?.title || 'New notification', {
+            description: payload.notification?.body
+          })
+        })
+      } else {
+        toast.error('Failed to enable push notifications')
+      }
+    } catch (error: any) {
+      toast.error('Failed to initialize push notifications')
+    } finally {
+      setInitializing(false)
     }
   }
 
-  if (loading || !localPrefs) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading notification settings...</p>
-        </div>
-      </div>
-    )
+  const testNotification = async () => {
+    try {
+      await notificationService.sendTestNotification()
+      toast.success('Test notification sent!')
+    } catch (error: any) {
+      toast.error('Failed to send test notification')
+    }
+  }
+
+  const disablePushNotifications = async () => {
+    try {
+      await notificationService.disable()
+      await updatePreferences({ push_enabled: false })
+      updateFCMSettings()
+      toast.success('Push notifications disabled')
+    } catch (error: any) {
+      toast.error('Failed to disable push notifications')
+    }
+  }
+
+  const getPermissionBadge = () => {
+    switch (fcmSettings.permission) {
+      case 'granted':
+        return <Badge variant="default" className="bg-green-100 text-green-700"><CheckCircle className="h-3 w-3 mr-1" />Enabled</Badge>
+      case 'denied':
+        return <Badge variant="destructive"><BellOff className="h-3 w-3 mr-1" />Blocked</Badge>
+      default:
+        return <Badge variant="secondary"><AlertCircle className="h-3 w-3 mr-1" />Not Set</Badge>
+    }
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
+      {/* Push Notifications Status */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <Settings className="h-5 w-5" />
-            <span>Notification Preferences</span>
+            <Smartphone className="h-5 w-5 text-blue-600" />
+            <span>Push Notifications</span>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Master Toggle */}
-          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
-            <div className="flex items-center space-x-3">
-              {localPrefs.enabled ? (
-                <Bell className="h-5 w-5 text-blue-600" />
-              ) : (
-                <BellOff className="h-5 w-5 text-gray-400" />
-              )}
-              <div>
-                <Label className="text-base font-medium">
-                  Enable Notifications
-                </Label>
-                <p className="text-sm text-gray-600">
-                  Turn all notifications on or off
-                </p>
-              </div>
-            </div>
-            <Switch
-              checked={localPrefs.enabled}
-              onCheckedChange={(checked) => handlePreferenceChange('enabled', checked)}
-            />
-          </div>
-
-          <Separator />
-
-          {/* Individual Notification Types */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Notification Types</h3>
-            
-            <div className="space-y-4">
-              {/* Post Interactions */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="font-medium">Post Likes</Label>
-                  <p className="text-sm text-gray-600">When someone likes your posts</p>
-                </div>
-                <Switch
-                  checked={localPrefs.post_likes}
-                  onCheckedChange={(checked) => handlePreferenceChange('post_likes', checked)}
-                  disabled={!localPrefs.enabled}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="font-medium">Post Comments</Label>
-                  <p className="text-sm text-gray-600">When someone comments on your posts</p>
-                </div>
-                <Switch
-                  checked={localPrefs.post_comments}
-                  onCheckedChange={(checked) => handlePreferenceChange('post_comments', checked)}
-                  disabled={!localPrefs.enabled}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="font-medium">New Followers</Label>
-                  <p className="text-sm text-gray-600">When someone follows your societies</p>
-                </div>
-                <Switch
-                  checked={localPrefs.new_followers}
-                  onCheckedChange={(checked) => handlePreferenceChange('new_followers', checked)}
-                  disabled={!localPrefs.enabled}
-                />
-              </div>
-
-              {/* Society Notifications */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="font-medium">Society Invitations</Label>
-                  <p className="text-sm text-gray-600">When you're invited to join a society</p>
-                </div>
-                <Switch
-                  checked={localPrefs.society_invites}
-                  onCheckedChange={(checked) => handlePreferenceChange('society_invites', checked)}
-                  disabled={!localPrefs.enabled}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="font-medium">Society Posts</Label>
-                  <p className="text-sm text-gray-600">When societies you follow post new content</p>
-                </div>
-                <Switch
-                  checked={localPrefs.society_posts}
-                  onCheckedChange={(checked) => handlePreferenceChange('society_posts', checked)}
-                  disabled={!localPrefs.enabled}
-                />
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Quiet Hours */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">Quiet Hours</h3>
-            <p className="text-sm text-gray-600">
-              Set a time period when you won't receive any notifications. Perfect for sleep or study time.
-            </p>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="quiet_start" className="text-sm font-medium">
-                  Start Time
-                </Label>
-                <Input
-                  id="quiet_start"
-                  type="time"
-                  value={localPrefs.quiet_hours_start}
-                  onChange={(e) => handlePreferenceChange('quiet_hours_start', e.target.value)}
-                  disabled={!localPrefs.enabled}
-                  className="mt-1"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="quiet_end" className="text-sm font-medium">
-                  End Time
-                </Label>
-                <Input
-                  id="quiet_end"
-                  type="time"
-                  value={localPrefs.quiet_hours_end}
-                  onChange={(e) => handlePreferenceChange('quiet_hours_end', e.target.value)}
-                  disabled={!localPrefs.enabled}
-                  className="mt-1"
-                />
-              </div>
-            </div>
-            
-            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-sm text-yellow-800">
-                <strong>Note:</strong> Quiet hours are currently set from {localPrefs.quiet_hours_start} to {localPrefs.quiet_hours_end}.
-                {localPrefs.quiet_hours_start > localPrefs.quiet_hours_end && 
-                  " This spans midnight (overnight quiet hours)."
-                }
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-900">Browser Support</p>
+              <p className="text-sm text-gray-600">
+                {fcmSettings.isSupported ? 'Supported in this browser' : 'Not supported in this browser'}
               </p>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end space-x-3 pt-4 border-t">
-            {hasChanges && (
-              <Button variant="outline" onClick={handleReset}>
-                Reset Changes
-              </Button>
-            )}
-            <Button 
-              onClick={handleSave} 
-              disabled={!hasChanges || saving}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
-                </>
-              )}
-            </Button>
+            <Badge variant={fcmSettings.isSupported ? 'default' : 'secondary'}>
+              {fcmSettings.isSupported ? 'Supported' : 'Not Supported'}
+            </Badge>
           </div>
           
-          {hasChanges && (
-            <div className="flex items-center space-x-2 text-sm text-amber-600">
-              <span>You have unsaved changes</span>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-900">Permission Status</p>
+              <p className="text-sm text-gray-600">Current browser permission level</p>
+            </div>
+            {getPermissionBadge()}
+          </div>
+
+          {fcmSettings.isSupported && (
+            <div className="flex space-x-3">
+              {fcmSettings.permission !== 'granted' ? (
+                <Button 
+                  onClick={initializePushNotifications}
+                  disabled={initializing || !fcmSettings.isSupported}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {initializing ? 'Enabling...' : 'Enable Push Notifications'}
+                </Button>
+              ) : (
+                <>
+                  <Button 
+                    onClick={testNotification}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Test Notification
+                  </Button>
+                  <Button 
+                    onClick={disablePushNotifications}
+                    variant="outline"
+                    size="sm"
+                  >
+                    Disable
+                  </Button>
+                </>
+              )}
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* PRD Section 5.6: Quiet Hours */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Moon className="h-5 w-5 text-purple-600" />
+            <span>Quiet Hours (22:00 - 07:00)</span>
+            {fcmSettings.isQuietHours && (
+              <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                <Clock className="h-3 w-3 mr-1" />Active Now
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-900">Enable Quiet Hours</p>
+              <p className="text-sm text-gray-600">
+                Suppress non-urgent notifications during sleep hours
+              </p>
+            </div>
+            <Switch
+              checked={preferences.quiet_hours_enabled}
+              onCheckedChange={(checked) => updatePreferences({ quiet_hours_enabled: checked })}
+              disabled={loading}
+            />
+          </div>
+          
+          <div className="text-sm text-gray-600 p-3 bg-purple-50 rounded-lg">
+            <p className="font-medium mb-1">How it works:</p>
+            <p>• Notifications from 22:00 to 07:00 are automatically suppressed</p>
+            <p>• Only urgent notifications (like emergency alerts) will be shown</p>
+            <p>• All suppressed notifications will be available when you wake up</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Notification Types */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Bell className="h-5 w-5 text-orange-600" />
+            <span>Notification Types</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-gray-900">Post Likes</p>
+                <p className="text-sm text-gray-600">When someone likes your posts</p>
+              </div>
+              <Switch
+                checked={preferences.post_likes}
+                onCheckedChange={(checked) => updatePreferences({ post_likes: checked })}
+                disabled={loading}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-gray-900">Comments</p>
+                <p className="text-sm text-gray-600">When someone comments on your posts</p>
+              </div>
+              <Switch
+                checked={preferences.post_comments}
+                onCheckedChange={(checked) => updatePreferences({ post_comments: checked })}
+                disabled={loading}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-gray-900">Society Updates</p>
+                <p className="text-sm text-gray-600">New posts from societies you follow</p>
+              </div>
+              <Switch
+                checked={preferences.society_updates}
+                onCheckedChange={(checked) => updatePreferences({ society_updates: checked })}
+                disabled={loading}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium text-gray-900">Invitations</p>
+                <p className="text-sm text-gray-600">Society membership invitations</p>
+              </div>
+              <Switch
+                checked={preferences.invitations}
+                onCheckedChange={(checked) => updatePreferences({ invitations: checked })}
+                disabled={loading}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Email Notifications */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Bell className="h-5 w-5 text-green-600" />
+            <span>Email Notifications</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-gray-900">Email Notifications</p>
+              <p className="text-sm text-gray-600">Receive important notifications via email</p>
+            </div>
+            <Switch
+              checked={preferences.email_enabled}
+              onCheckedChange={(checked) => updatePreferences({ email_enabled: checked })}
+              disabled={loading}
+            />
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -11,17 +11,17 @@ import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 
 export function ProfileSetup() {
-  const [displayName, setDisplayName] = useState('')
+  const [name, setName] = useState('')
+  const [institute, setInstitute] = useState('')
+  const [course, setCourse] = useState('')
   const [bio, setBio] = useState('')
-  const [campus, setCampus] = useState('')
-  const [year, setYear] = useState('')
   const [interests, setInterests] = useState<string[]>([])
   const [newInterest, setNewInterest] = useState('')
   const [loading, setLoading] = useState(false)
   const { refreshProfile } = useAuth()
   const navigate = useNavigate()
 
-  const yearOptions = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'PhD', 'Faculty']
+  const courseOptions = ['Computer Science', 'Engineering', 'Business', 'Medicine', 'Law', 'Arts', 'Sciences', 'Other']
   const commonInterests = [
     'Programming', 'AI/ML', 'Web Development', 'Data Science', 'Cybersecurity',
     'Sports', 'Music', 'Art', 'Photography', 'Gaming', 'Reading', 'Movies',
@@ -42,19 +42,18 @@ export function ProfileSetup() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!displayName.trim() || !campus.trim()) {
-      toast.error('Please fill in your display name and campus')
+    if (!name.trim() || !institute.trim()) {
+      toast.error('Please fill in your name and institution')
       return
     }
 
     setLoading(true)
     try {
       await createOrUpdateProfile({
-        display_name: displayName.trim(),
-        bio: bio.trim() || undefined,
-        campus: campus.trim(),
-        year: year || undefined,
-        interests: interests.length > 0 ? interests : undefined
+        name: name.trim(),
+        institute: institute.trim(),
+        course: course || undefined,
+        bio: bio.trim() || undefined
       })
       
       await refreshProfile()
@@ -84,23 +83,23 @@ export function ProfileSetup() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Display Name *</label>
+                <label className="text-sm font-medium">Full Name *</label>
                 <Input
                   type="text"
-                  placeholder="How should people call you?"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Your full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   required
                   className="w-full"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Campus *</label>
+                <label className="text-sm font-medium">Institution *</label>
                 <Input
                   type="text"
                   placeholder="Your university or college"
-                  value={campus}
-                  onChange={(e) => setCampus(e.target.value)}
+                  value={institute}
+                  onChange={(e) => setInstitute(e.target.value)}
                   required
                   className="w-full"
                 />
@@ -108,14 +107,14 @@ export function ProfileSetup() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Academic Year</label>
+              <label className="text-sm font-medium">Course/Field of Study</label>
               <select 
-                value={year} 
-                onChange={(e) => setYear(e.target.value)}
+                value={course} 
+                onChange={(e) => setCourse(e.target.value)}
                 className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
               >
-                <option value="">Select your academic year</option>
-                {yearOptions.map(option => (
+                <option value="">Select your field of study</option>
+                {courseOptions.map(option => (
                   <option key={option} value={option}>{option}</option>
                 ))}
               </select>
@@ -206,7 +205,7 @@ export function ProfileSetup() {
             <Button 
               type="submit" 
               className="w-full"
-              disabled={loading || !displayName.trim() || !campus.trim()}
+              disabled={loading || !name.trim() || !institute.trim()}
             >
               {loading ? (
                 <>

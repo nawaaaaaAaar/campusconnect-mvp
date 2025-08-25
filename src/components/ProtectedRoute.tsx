@@ -40,8 +40,15 @@ export function ProtectedRoute({ children, requireProfile = true }: ProtectedRou
   }
 
   // Check if profile is required and not complete
-  if (requireProfile && (!profile || !profile.profile_complete)) {
-    // Don't redirect if we're already on the profile setup page
+  if (requireProfile && profile) {
+    // Profile is complete if user has name and institute
+    const isProfileComplete = profile.name && profile.institute;
+    
+    if (!isProfileComplete && location.pathname !== '/profile-setup') {
+      return <Navigate to="/profile-setup" replace />
+    }
+  } else if (requireProfile && !profile) {
+    // If profile is required but doesn't exist, redirect to profile setup
     if (location.pathname !== '/profile-setup') {
       return <Navigate to="/profile-setup" replace />
     }

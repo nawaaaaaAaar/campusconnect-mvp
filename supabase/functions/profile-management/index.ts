@@ -42,13 +42,12 @@ Deno.serve(async (req) => {
     const userId = user.id;
 
     if (req.method === 'GET') {
-      // Get user profile
-      const profileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${userId}`, {
+      // Get user profile by id (not user_id)
+      const profileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
         headers: {
           'Authorization': `Bearer ${supabaseServiceRoleKey}`,
           'apikey': supabaseServiceRoleKey,
           'Content-Type': 'application/json',
-          'Accept': 'application/vnd.pgrst.object+json',
         },
       });
 
@@ -58,34 +57,31 @@ Deno.serve(async (req) => {
       }
 
       const profiles = await profileResponse.json();
-      const profile = Array.isArray(profiles) ? profiles[0] : profiles;
+      const profile = profiles.length > 0 ? profiles[0] : null;
 
-      return new Response(JSON.stringify({ data: profile || null }), {
+      // If no profile exists, return null (not an error)
+      return new Response(JSON.stringify({ data: profile }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
     if (req.method === 'POST' || req.method === 'PUT') {
-      // Create or update user profile
+      // Create or update user profile using PRD schema
       const requestData = await req.json();
-      const { display_name, bio, avatar_url, campus, year, interests, account_type } = requestData;
+      const { name, avatar_url, institute, course } = requestData;
 
       const profileData = {
-        user_id: userId,
+        id: userId,
         email: user.email,
-        display_name,
-        bio,
+        name,
         avatar_url,
-        campus,
-        year,
-        interests,
-        account_type: account_type || 'student',
-        profile_complete: !!(display_name && campus),
-        updated_at: new Date().toISOString()
+        institute,
+        course,
+        created_at: new Date().toISOString()
       };
 
       // Check if profile already exists
-      const existingResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${userId}`, {
+      const existingResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
         headers: {
           'Authorization': `Bearer ${supabaseServiceRoleKey}`,
           'apikey': supabaseServiceRoleKey,
@@ -98,8 +94,9 @@ Deno.serve(async (req) => {
 
       let response;
       if (hasExistingProfile) {
-        // Update existing profile
-        response = await fetch(`${supabaseUrl}/rest/v1/profiles?user_id=eq.${userId}`, {
+        // Update existing profile (exclude id and created_at)
+        const { id, created_at, ...updateData } = profileData;
+        response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${supabaseServiceRoleKey}`,
@@ -107,17 +104,17 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
           },
-          body: JSON.stringify(profileData)
+          body: JSON.stringify(updateData)
         });
       } else {
-        // Create new profile
+        // Create new profile (upsert to avoid conflicts)
         response = await fetch(`${supabaseUrl}/rest/v1/profiles`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${supabaseServiceRoleKey}`,
             'apikey': supabaseServiceRoleKey,
             'Content-Type': 'application/json',
-            'Prefer': 'return=representation'
+            'Prefer': 'return=representation,resolution=merge-duplicates'
           },
           body: JSON.stringify(profileData)
         });

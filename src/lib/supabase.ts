@@ -46,11 +46,17 @@ export async function verifyOTP(email: string, otp: string) {
   return data
 }
 
-export async function signInWithGoogle() {
+export async function signInWithGoogle(accountType?: 'student' | 'society') {
+  const redirectTo = `${window.location.protocol}//${window.location.host}/auth/callback`;
+  
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: 'https://campusconnect-mvp.vercel.app/auth/callback'
+      redirectTo,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      }
     }
   })
 
@@ -62,12 +68,15 @@ export async function signInWithGoogle() {
   return data
 }
 
-export async function signUpWithPassword(email: string, password: string) {
+export async function signUpWithPassword(email: string, password: string, accountType?: 'student' | 'society') {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      emailRedirectTo: 'https://campusconnect-mvp.vercel.app/auth/callback'
+      emailRedirectTo: `${window.location.protocol}//${window.location.host}/auth/callback`,
+      data: {
+        account_type: accountType || 'student'
+      }
     }
   })
 
@@ -119,11 +128,11 @@ export async function getUserProfile() {
 }
 
 export async function createOrUpdateProfile(profileData: {
-  display_name?: string
+  name?: string
   bio?: string
   avatar_url?: string
-  campus?: string
-  year?: string
+  institute?: string
+  course?: string
   interests?: string[]
   account_type?: 'student' | 'society'
 }) {
@@ -134,7 +143,7 @@ export async function createOrUpdateProfile(profileData: {
   if (!session) throw new Error('No active session')
 
   const response = await fetch(`${supabaseUrl}/functions/v1/profile-management`, {
-    method: 'POST',
+    method: 'PUT',
     headers: {
       'Authorization': `Bearer ${session.access_token}`,
       'Content-Type': 'application/json'

@@ -57,6 +57,24 @@ class CampusConnectAPI {
     return this.makeRequest(`/societies-api/${id}`)
   }
   
+  async getSocietyMembers(societyId: string, params?: {
+    limit?: number
+    cursor?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString())
+        }
+      })
+    }
+    
+    const query = searchParams.toString()
+    return this.makeRequest(`/societies-api/${societyId}/members${query ? `?${query}` : ''}`)
+  }
+  
   async followSociety(id: string) {
     return this.makeRequest(`/societies-api/${id}/follow`, {
       method: 'POST',

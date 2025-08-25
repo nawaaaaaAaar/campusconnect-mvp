@@ -44,19 +44,9 @@ export function SignupForm({ accountType, onBack, onSuccess }: SignupFormProps) 
 
     setLoading(true)
     try {
-      const result = await signUp(email, password)
+      const result = await signUp(email, password, accountType)
       
       if (result.user) {
-        // Create profile with account type after successful signup
-        try {
-          await createOrUpdateProfile({
-            display_name: email.split('@')[0], // Use email prefix as initial display name
-            account_type: accountType
-          })
-        } catch (profileError) {
-          console.warn('Profile creation failed, but signup succeeded:', profileError)
-        }
-        
         if (!result.user.email_confirmed_at) {
           toast.success('Check your email for a confirmation link!')
         } else {
@@ -76,9 +66,8 @@ export function SignupForm({ accountType, onBack, onSuccess }: SignupFormProps) 
   const handleGoogleSignup = async () => {
     setGoogleLoading(true)
     try {
-      await signInWithGoogle()
+      await signInWithGoogle(accountType)
       // Note: User will be redirected to Google, so no success message needed here
-      // Google signup will be handled by the same OAuth flow as login
     } catch (error: any) {
       console.error('Google signup error:', error)
       toast.error(error.message || 'Failed to sign up with Google')

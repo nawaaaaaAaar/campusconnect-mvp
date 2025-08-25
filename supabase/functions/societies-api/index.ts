@@ -21,12 +21,11 @@ Deno.serve(async (req) => {
 
         const url = new URL(req.url);
         const method = req.method;
-        const pathSegments = url.pathname.split('/').filter(Boolean);
+        const pathSegments = url.pathname.split('/').filter(Boolean).slice(1); // Remove 'societies-api'
         
-        // Get user from auth header
-        const authHeader = req.headers.get('authorization');
+        // Get user from auth header (optional for some endpoints)
         let userId = null;
-        
+        const authHeader = req.headers.get('authorization');
         if (authHeader) {
             const token = authHeader.replace('Bearer ', '');
             const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
@@ -51,13 +50,13 @@ Deno.serve(async (req) => {
             const verified = url.searchParams.get('verified');
             const search = url.searchParams.get('search');
             
-            let query = `${supabaseUrl}/rest/v1/societies?select=*,society_followers(count),society_members(count),posts(count)`;
+            let query = `${supabaseUrl}/rest/v1/societies?select=*`;
             
             // Add filters
             const filters = [];
             if (institute) filters.push(`institute_id.eq.${institute}`);
             if (category) filters.push(`category.eq.${category}`);
-            if (verified !== null) filters.push(`verified.eq.${verified}`);
+            if (verified !== null && verified !== undefined) filters.push(`verified.eq.${verified}`);
             if (search) filters.push(`name.ilike.*${search}*`);
             if (cursor) filters.push(`created_at.lt.${cursor}`);
             
@@ -65,7 +64,7 @@ Deno.serve(async (req) => {
                 query += `&${filters.join('&')}`;
             }
             
-            query += `&limit=${limit}&order=created_at.desc`;
+            query += `&limit=${limit}&order=name.asc`;
             
             const response = await fetch(query, {
                 headers: {
@@ -75,14 +74,15 @@ Deno.serve(async (req) => {
             });
             
             if (!response.ok) {
-                throw new Error(`Failed to fetch societies: ${response.statusText}`);
+                const errorText = await response.text();
+                throw new Error(`Failed to fetch societies: ${errorText}`);
             }
             
             const societies = await response.json();
             
             return new Response(JSON.stringify({
                 data: societies,
-                cursor: societies.length === limit ? societies[societies.length - 1].created_at : null
+                cursor: societies.length === limit ? societies[societies.length - 1].name : null
             }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
@@ -93,7 +93,7 @@ Deno.serve(async (req) => {
             const societyId = pathSegments[0];
             
             const response = await fetch(
-                `${supabaseUrl}/rest/v1/societies?select=*,society_followers(count),society_members(count)&id=eq.${societyId}`,
+                `${supabaseUrl}/rest/v1/societies?select=*&id=eq.${societyId}`,
                 {
                     headers: {
                         'Authorization': `Bearer ${serviceRoleKey}`,
@@ -103,7 +103,8 @@ Deno.serve(async (req) => {
             );
             
             if (!response.ok) {
-                throw new Error(`Failed to fetch society: ${response.statusText}`);
+                const errorText = await response.text();
+                throw new Error(`Failed to fetch society: ${errorText}`);
             }
             
             const societies = await response.json();
@@ -140,6 +141,32 @@ Deno.serve(async (req) => {
             society.is_following = isFollowing;
             
             return new Response(JSON.stringify({ data: society }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+        
+        // GET /societies/{id}/members - Get society members (public)
+        if (method === 'GET' && pathSegments.length === 2 && pathSegments[1] === 'members') {
+            const societyId = pathSegments[0];
+            
+            const response = await fetch(
+                `${supabaseUrl}/rest/v1/society_members?select=*,profiles!inner(name,avatar_url)&society_id=eq.${societyId}`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'apikey': serviceRoleKey
+                    }
+                }
+            );
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`Failed to fetch society members: ${errorText}`);
+            }
+            
+            const members = await response.json();
+            
+            return new Response(JSON.stringify({ data: members }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
@@ -199,7 +226,8 @@ Deno.serve(async (req) => {
             );
             
             if (!followResponse.ok) {
-                throw new Error(`Failed to follow society: ${followResponse.statusText}`);
+                const errorText = await followResponse.text();
+                throw new Error(`Failed to follow society: ${errorText}`);
             }
             
             return new Response(JSON.stringify({
@@ -223,7 +251,7 @@ Deno.serve(async (req) => {
             const societyId = pathSegments[0];
             
             // Delete follow relationship (idempotent)
-            const unfollowResponse = await fetch(
+            await fetch(
                 `${supabaseUrl}/rest/v1/society_followers?user_id=eq.${userId}&society_id=eq.${societyId}`,
                 {
                     method: 'DELETE',

@@ -8,13 +8,16 @@ import { Badge } from '../components/ui/badge'
 import { Separator } from '../components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { LogOut, Home, Users, TrendingUp, Settings, Bell, Plus, User, Shield } from 'lucide-react'
+import { Header } from '../components/Header'
+import { BottomNavigation } from '../components/BottomNavigation'
 import { HomeFeed } from '../components/HomeFeed'
-import { EnhancedSocietiesDiscovery } from '../components/EnhancedSocietiesDiscovery'
+import { SearchAndDiscovery } from '../components/SearchAndDiscovery'
 import { PostCreationForm } from '../components/PostCreationForm'
 import { NotificationsFeed } from '../components/NotificationsFeed'
 import { NotificationSettings } from '../components/NotificationSettings'
 import { AdminPanel } from '../components/AdminPanel'
 import { signOut } from '../lib/supabase'
+import { notificationService } from '../lib/notifications'
 import { toast } from 'sonner'
 import { useNavigate } from 'react-router-dom'
 
@@ -25,7 +28,22 @@ export function Dashboard() {
   const [activeTab, setActiveTab] = useState('home')
   const [showPostForm, setShowPostForm] = useState(false)
   const [showNotifications, setShowNotifications] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [isAdmin] = useState(false) // In a real app, this would be determined by user role
+
+  // Initialize FCM notifications on mount
+  useEffect(() => {
+    const initNotifications = async () => {
+      try {
+        await notificationService.initialize()
+        console.log('FCM notifications initialized')
+      } catch (error) {
+        console.error('Failed to initialize notifications:', error)
+      }
+    }
+    
+    initNotifications()
+  }, [])
 
   // Load unread count on mount and when tab changes
   useEffect(() => {
@@ -68,6 +86,7 @@ export function Dashboard() {
 
   const handleBellClick = () => {
     setShowNotifications(!showNotifications)
+    setActiveTab('notifications')
     if (!showNotifications) {
       // Reload count when opening notifications
       setTimeout(loadUnreadCount, 500) // Small delay to allow for read status updates
@@ -78,162 +97,125 @@ export function Dashboard() {
   if (showPostForm) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">CC</span>
-                </div>
-                <h1 className="ml-3 text-xl font-bold text-gray-900">CampusConnect</h1>
-              </div>
-              
-              <Button variant="outline" onClick={() => setShowPostForm(false)}>
-                Back to Dashboard
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        {/* Post Creation Form */}
+        <Header
+          onCreatePost={() => setShowPostForm(true)}
+          onNotificationClick={handleBellClick}
+          onSignOut={handleSignOut}
+          unreadCount={unreadCount}
+          onSearch={setSearchQuery}
+          searchQuery={searchQuery}
+        />
+        
         <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <div className="mb-4">
+            <Button variant="outline" onClick={() => setShowPostForm(false)}>
+              Back to Dashboard
+            </Button>
+          </div>
           <PostCreationForm 
             onSuccess={handlePostSuccess}
             onCancel={() => setShowPostForm(false)}
           />
         </main>
+        
+        <div className="pb-20 md:pb-0" /> {/* Bottom nav spacing */}
+        <BottomNavigation
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          unreadCount={unreadCount}
+        />
       </div>
     )
   }
 
-  // Show notifications overlay
+  // Show notifications overlay  
   if (showNotifications) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">CC</span>
-                </div>
-                <h1 className="ml-3 text-xl font-bold text-gray-900">CampusConnect</h1>
-              </div>
-              
-              <Button variant="outline" onClick={() => setShowNotifications(false)}>
-                Back to Dashboard
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        {/* Notifications Content */}
+        <Header
+          onCreatePost={() => setShowPostForm(true)}
+          onNotificationClick={handleBellClick}
+          onSignOut={handleSignOut}
+          unreadCount={unreadCount}
+          onSearch={setSearchQuery}
+          searchQuery={searchQuery}
+        />
+        
         <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+          <div className="mb-4">
+            <Button variant="outline" onClick={() => setShowNotifications(false)}>
+              Back to Dashboard
+            </Button>
+          </div>
           <NotificationsFeed />
         </main>
+        
+        <div className="pb-20 md:pb-0" /> {/* Bottom nav spacing */}
+        <BottomNavigation
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            if (tab === 'notifications') {
+              return // Already on notifications
+            }
+            setShowNotifications(false)
+            setActiveTab(tab)
+          }}
+          unreadCount={unreadCount}
+        />
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
-                <span className="text-white font-bold text-sm">CC</span>
-              </div>
-              <h1 className="ml-3 text-xl font-bold text-gray-900">CampusConnect</h1>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              {/* Create Post Button - Only show for society accounts */}
-              {profile?.account_type === 'society' && (
-                <Button 
-                  onClick={() => setShowPostForm(true)}
-                  className="bg-green-600 hover:bg-green-700"
-                  size="sm"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Post
-                </Button>
-              )}
-
-              {/* Notifications Bell */}
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="relative"
-                onClick={handleBellClick}
-              >
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </Button>
-              
-              <Avatar>
-                <AvatarImage src={user?.user_metadata?.avatar_url} />
-                <AvatarFallback className="bg-blue-100 text-blue-600">
-                  {user?.email ? getInitials(user.email) : 'U'}
-                </AvatarFallback>
-              </Avatar>
-              
-              <div className="hidden md:block">
-                <p className="text-sm font-medium text-gray-900">{user?.email}</p>
-                <p className="text-xs text-gray-500">
-                  {user?.user_metadata?.provider === 'google' ? 'Google Account' : 'Email Account'}
-                </p>
-              </div>
-              
-              <Button variant="outline" size="sm" onClick={handleSignOut}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Sign Out
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Enhanced Header */}
+      <Header
+        onCreatePost={() => setShowPostForm(true)}
+        onNotificationClick={handleBellClick}
+        onSignOut={handleSignOut}
+        unreadCount={unreadCount}
+        onSearch={setSearchQuery}
+        searchQuery={searchQuery}
+      />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          {/* Navigation Tabs */}
-          <div className="bg-white rounded-lg shadow-sm border mb-6">
+          {/* Desktop Navigation Tabs */}
+          <div className="bg-white rounded-lg shadow-sm border mb-6 hidden md:block">
             <TabsList className={`grid w-full ${isAdmin ? 'grid-cols-5' : 'grid-cols-4'} bg-transparent p-1`}>
               <TabsTrigger 
                 value="home" 
                 className="flex items-center space-x-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-600"
               >
                 <Home className="h-4 w-4" />
-                <span className="hidden sm:inline">Home Feed</span>
+                <span>Home Feed</span>
               </TabsTrigger>
               <TabsTrigger 
-                value="societies" 
+                value="search" 
                 className="flex items-center space-x-2 data-[state=active]:bg-purple-50 data-[state=active]:text-purple-600"
               >
                 <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">Societies</span>
+                <span>Discovery</span>
               </TabsTrigger>
               <TabsTrigger 
-                value="trending" 
-                className="flex items-center space-x-2 data-[state=active]:bg-green-50 data-[state=active]:text-green-600"
+                value="notifications" 
+                className="flex items-center space-x-2 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-600"
               >
-                <TrendingUp className="h-4 w-4" />
-                <span className="hidden sm:inline">Trending</span>
+                <Bell className="h-4 w-4" />
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-4 w-4 p-0 flex items-center justify-center text-xs">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </Badge>
+                )}
               </TabsTrigger>
               <TabsTrigger 
                 value="profile" 
-                className="flex items-center space-x-2 data-[state=active]:bg-orange-50 data-[state=active]:text-orange-600"
+                className="flex items-center space-x-2 data-[state=active]:bg-green-50 data-[state=active]:text-green-600"
               >
                 <Settings className="h-4 w-4" />
-                <span className="hidden sm:inline">Profile</span>
+                <span>Profile</span>
               </TabsTrigger>
               {isAdmin && (
                 <TabsTrigger 
@@ -241,7 +223,7 @@ export function Dashboard() {
                   className="flex items-center space-x-2 data-[state=active]:bg-red-50 data-[state=active]:text-red-600"
                 >
                   <Shield className="h-4 w-4" />
-                  <span className="hidden sm:inline">Admin</span>
+                  <span>Admin</span>
                 </TabsTrigger>
               )}
             </TabsList>
@@ -269,28 +251,15 @@ export function Dashboard() {
             <HomeFeed />
           </TabsContent>
 
-          <TabsContent value="societies" className="mt-0">
-            <EnhancedSocietiesDiscovery />
+          <TabsContent value="search" className="mt-0">
+            <SearchAndDiscovery 
+              searchQuery={searchQuery} 
+              onSearchChange={setSearchQuery}
+            />
           </TabsContent>
 
-          <TabsContent value="trending" className="mt-0">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
-                  <span>Trending on Campus</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-2">Trending content coming soon!</p>
-                  <p className="text-sm text-gray-500">
-                    We're working on bringing you the most popular posts and topics across your campus.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="notifications" className="mt-0">
+            <NotificationsFeed />
           </TabsContent>
 
           <TabsContent value="profile" className="mt-0">
@@ -312,13 +281,25 @@ export function Dashboard() {
                           {user?.email ? getInitials(user.email) : 'U'}
                         </AvatarFallback>
                       </Avatar>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">{user?.email}</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                        {profile?.name || user?.email}
+                      </h3>
+                      <Badge variant="outline" className="mb-2 capitalize">
+                        {profile?.account_type || 'Student'} Account
+                      </Badge>
                       <p className="text-gray-600 mb-4">
-                        {user?.user_metadata?.provider === 'google' ? 'Google Account' : 'Email Account'}
+                        {profile?.institute || 'Institution not set'}
                       </p>
-                      <p className="text-sm text-gray-500">
-                        Profile management features coming soon!
-                      </p>
+                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                        <div>
+                          <span className="font-medium">{profile?.stats?.societies_following || 0}</span>
+                          <p>Following</p>
+                        </div>
+                        <div>
+                          <span className="font-medium">{profile?.stats?.societies_member_of || 0}</span>
+                          <p>Member Of</p>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -348,6 +329,22 @@ export function Dashboard() {
           )}
         </Tabs>
       </main>
+      
+      {/* Mobile spacing for bottom navigation */}
+      <div className="pb-20 md:pb-0" />
+      
+      {/* Enhanced Bottom Navigation */}
+      <BottomNavigation
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          if (tab === 'notifications') {
+            setShowNotifications(true)
+          } else {
+            setActiveTab(tab)
+          }
+        }}
+        unreadCount={unreadCount}
+      />
     </div>
   )
 }

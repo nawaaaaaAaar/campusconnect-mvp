@@ -4,17 +4,20 @@ import { supabase, getUserProfile, signUpWithPassword, signInWithPassword } from
 
 interface UserProfile {
   id: string
-  user_id: string
-  display_name?: string
-  bio?: string
+  email: string
+  name?: string
   avatar_url?: string
-  campus?: string
-  year?: string
-  interests?: string[]
+  institute?: string
+  course?: string
   account_type: 'student' | 'society'
-  profile_complete: boolean
   created_at: string
-  updated_at: string
+  updated_at?: string
+  stats?: {
+    societies_member_of: number
+    societies_following: number
+  }
+  society_memberships?: any[]
+  society_follows?: any[]
 }
 
 interface AuthContextType {
@@ -22,7 +25,7 @@ interface AuthContextType {
   profile: UserProfile | null
   loading: boolean
   profileLoading: boolean
-  signUp: (email: string, password: string) => Promise<any>
+  signUp: (email: string, password: string, accountType?: 'student' | 'society') => Promise<any>
   signIn: (email: string, password: string) => Promise<any>
   refreshProfile: () => Promise<void>
 }
@@ -110,8 +113,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const signUp = async (email: string, password: string) => {
-    return await signUpWithPassword(email, password)
+  const signUp = async (email: string, password: string, accountType?: 'student' | 'society') => {
+    return await signUpWithPassword(email, password, accountType)
   }
 
   const signIn = async (email: string, password: string) => {
