@@ -79,14 +79,37 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
   }, [])
 
   const loadUserSocieties = async () => {
+    if (loadingSocieties) return // Prevent double loading
+    
     setLoadingSocieties(true)
     try {
+      // Get user's profile with society memberships
       const response = await campusAPI.getProfile()
-      // Get societies where user is a member
-      const memberSocieties = response.data.society_memberships || []
-      setSocieties(memberSocieties)
+      console.log('Profile response:', response)
+      
+      if (response?.data?.society_memberships) {
+        // Filter for societies where user has posting permissions (owner, admin, editor)
+        const postingSocieties = response.data.society_memberships.filter(
+          (membership: any) => 
+            membership.role && 
+            ['owner', 'admin', 'editor'].includes(membership.role.toLowerCase())
+        )
+        
+        console.log('Posting societies:', postingSocieties)
+        setSocieties(postingSocieties)
+        
+        if (postingSocieties.length === 0) {
+          toast.error('You do not have posting permissions for any society. Contact a society admin to get editor access.')
+        }
+      } else {
+        console.log('No society memberships found')
+        setSocieties([])
+        toast.error('No society memberships found. You need to be a member of a society to create posts.')
+      }
     } catch (error: any) {
-      toast.error('Failed to load societies')
+      console.error('Failed to load societies:', error)
+      setSocieties([])
+      toast.error('Failed to load your societies. Please refresh and try again.')
     } finally {
       setLoadingSocieties(false)
     }
@@ -272,20 +295,34 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
           {/* Society Selection */}
           <div>
             <Label htmlFor="society_id">Post to Society *</Label>
-            <select
-              {...register('society_id', { required: 'Please select a society' })}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              disabled={loadingSocieties}
-            >
-              <option value="">Select a society...</option>
-              {societies.map((membership) => (
-                <option key={membership.society_id} value={membership.society_id}>
-                  {membership.societies?.name || 'Unknown Society'}
+            <div className="mt-1 relative">
+              <select
+                {...register('society_id', { required: 'Please select a society' })}
+                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                disabled={loadingSocieties}
+              >
+                <option value="">
+                  {loadingSocieties ? 'Loading societies...' : societies.length === 0 ? 'No societies available' : 'Select a society...'}
                 </option>
-              ))}
-            </select>
+                {societies.map((membership) => (
+                  <option key={membership.society_id} value={membership.society_id}>
+                    {membership.societies?.name || 'Unknown Society'} ({membership.role || 'member'})
+                  </option>
+                ))}
+              </select>
+              {loadingSocieties && (
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                </div>
+              )}
+            </div>
             {errors.society_id && (
               <p className="mt-1 text-sm text-red-600">{errors.society_id.message}</p>
+            )}
+            {!loadingSocieties && societies.length === 0 && (
+              <p className="mt-1 text-sm text-orange-600">
+                You need editor, admin, or owner permissions in a society to create posts.
+              </p>
             )}
           </div>
 
