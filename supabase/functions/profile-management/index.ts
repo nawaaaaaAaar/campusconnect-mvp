@@ -1,295 +1,307 @@
-Deno.serve(async (req) => {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE, PATCH',
-    'Access-Control-Max-Age': '86400',
-    'Access-Control-Allow-Credentials': 'false'
-  };
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE, PATCH',
+  'Access-Control-Max-Age': '86400',
+  'Access-Control-Allow-Credentials': 'false'
+};
 
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
-      throw new Error('Missing Supabase configuration');
-    }
-
     const authHeader = req.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new Error('Missing or invalid authorization header');
-    }
-
-    const token = authHeader.substring(7);
-
-    // Verify the JWT token with Supabase
-    const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'apikey': supabaseServiceRoleKey,
-      },
-    });
-
-    if (!userResponse.ok) {
-      throw new Error('Invalid authentication token');
-    }
-
-    const user = await userResponse.json();
-    const userId = user.id;
-
-    if (req.method === 'GET') {
-      // Get user profile by id (not user_id)
-      const profileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${supabaseServiceRoleKey}`,
-          'apikey': supabaseServiceRoleKey,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!profileResponse.ok) {
-        const errorText = await profileResponse.text();
-        throw new Error(`Failed to fetch profile: ${errorText}`);
-      }
-
-      const profiles = await profileResponse.json();
-      const profile = profiles.length > 0 ? profiles[0] : null;
-
-      // If no profile exists, return null (not an error)
-      return new Response(JSON.stringify({ data: profile }), {
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: { code: 'UNAUTHORIZED', message: 'Missing authorization header' } }), {
+        status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    if (req.method === 'POST' || req.method === 'PUT') {
-      // Create or update user profile with support for both students and societies
-      const requestData = await req.json();
-      const { name, avatar_url, institute, course, account_type, bio } = requestData;
+    const jwt = authHeader.replace('Bearer ', '');
+    
+    // Get environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!supabaseUrl || !serviceRoleKey) {
+      return new Response(JSON.stringify({ error: { code: 'CONFIG_ERROR', message: 'Supabase configuration missing' } }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
-      // Validate account_type
-      if (account_type && !['student', 'society'].includes(account_type)) {
-        throw new Error('Invalid account_type. Must be either "student" or "society"');
+    // Verify the JWT and get user using REST API
+    const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        'Authorization': authHeader,
+        'apikey': serviceRoleKey
       }
+    });
+    
+    if (!userResponse.ok) {
+      return new Response(JSON.stringify({ error: { code: 'INVALID_JWT', message: 'Invalid or expired token' } }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    const userData = await userResponse.json();
+    const userId = userData.id;
 
-      const profileData = {
-        id: userId,
-        user_id: userId,
-        name,
-        avatar_url,
-        institute,
-        course: course || null,
-        account_type: account_type || 'student'
-      };
-
-      console.log(`Attempting to upsert profile for user ${userId} with email ${user.email}`);
-
-      let response;
-      let savedProfile;
-
+    if (req.method === 'GET') {
       try {
-        // First, try to update the existing profile by email
-        console.log('Attempting to update existing profile...');
+        // First try to get existing profile
+        const profileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=*`, {
+          headers: {
+            'Authorization': `Bearer ${serviceRoleKey}`,
+            'apikey': serviceRoleKey,
+            'Content-Type': 'application/json'
+          }
+        });
         
-        // Add null check for user.email
-        const userEmail = user.email || '';
+        let profile = null;
+        if (profileResponse.ok) {
+          const profiles = await profileResponse.json();
+          profile = profiles?.[0] || null;
+        }
         
-        const updateResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(userEmail)}`, {
+        // If no profile exists, create one (trigger should handle this, but fallback)
+        if (!profile) {
+          const createProfileResponse = await fetch(`${supabaseUrl}/rest/v1/profiles`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${serviceRoleKey}`,
+              'apikey': serviceRoleKey,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({
+              id: userId,
+              email: userData.email || '',
+              account_type: userData.app_metadata?.account_type || 'student',
+              name: userData.user_metadata?.name || userData.user_metadata?.full_name || null,
+              avatar_url: userData.user_metadata?.avatar_url || null,
+              created_at: userData.created_at
+            })
+          });
+          
+          if (createProfileResponse.ok) {
+            const createdProfiles = await createProfileResponse.json();
+            profile = createdProfiles?.[0];
+          } else {
+            // If creation fails, it might already exist due to race condition
+            const retryResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=*`, {
+              headers: {
+                'Authorization': `Bearer ${serviceRoleKey}`,
+                'apikey': serviceRoleKey,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (retryResponse.ok) {
+              const retryProfiles = await retryResponse.json();
+              profile = retryProfiles?.[0] || null;
+            }
+          }
+        }
+        
+        if (!profile) {
+          return new Response(JSON.stringify({ 
+            error: { 
+              code: 'PROFILE_CREATE_ERROR', 
+              message: 'Failed to create or fetch user profile' 
+            } 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // Get society memberships
+        const membershipsResponse = await fetch(`${supabaseUrl}/rest/v1/society_members?user_id=eq.${userId}&select=society_id,role,joined_at,societies(id,name,institute_id)`, {
+          headers: {
+            'Authorization': `Bearer ${serviceRoleKey}`,
+            'apikey': serviceRoleKey,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const memberships = membershipsResponse.ok ? await membershipsResponse.json() : [];
+        
+        // Get society follows
+        const followsResponse = await fetch(`${supabaseUrl}/rest/v1/society_follows?user_id=eq.${userId}&select=society_id,societies(id,name,institute_id)`, {
+          headers: {
+            'Authorization': `Bearer ${serviceRoleKey}`,
+            'apikey': serviceRoleKey,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const follows = followsResponse.ok ? await followsResponse.json() : [];
+        
+        // Add stats and relationships
+        const profileData = {
+          ...profile,
+          society_memberships: memberships,
+          society_follows: follows,
+          stats: {
+            societies_member_of: memberships.length,
+            societies_following: follows.length
+          }
+        };
+        
+        return new Response(JSON.stringify({ data: profileData }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Profile fetch error:', error);
+        return new Response(JSON.stringify({ 
+          error: { 
+            code: 'PROFILE_FETCH_ERROR', 
+            message: 'Failed to fetch user profile',
+            details: error.message 
+          } 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    if (req.method === 'PUT') {
+      try {
+        const requestData = await req.json();
+        const { name, avatar_url, institute, course } = requestData;
+
+        // Update profile
+        const updateResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
           method: 'PATCH',
           headers: {
-            'Authorization': `Bearer ${supabaseServiceRoleKey}`,
-            'apikey': supabaseServiceRoleKey,
+            'Authorization': `Bearer ${serviceRoleKey}`,
+            'apikey': serviceRoleKey,
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
           },
           body: JSON.stringify({
-            ...profileData,
+            name,
+            avatar_url,
+            institute,
+            course,
             updated_at: new Date().toISOString()
           })
         });
 
-        if (updateResponse.ok) {
-          const updateResult = await updateResponse.json();
-          console.log('Update response:', updateResult);
-          
-          if (Array.isArray(updateResult) && updateResult.length > 0) {
-            // Update successful - profile existed and was updated
-            savedProfile = updateResult[0];
-            console.log('Profile updated successfully:', savedProfile.id);
-          } else {
-            // No existing profile found, need to create new one
-            console.log('No existing profile found, creating new profile...');
-            
-            const createResponse = await fetch(`${supabaseUrl}/rest/v1/profiles`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${supabaseServiceRoleKey}`,
-                'apikey': supabaseServiceRoleKey,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=representation'
-              },
-              body: JSON.stringify({
-                ...profileData,
-                email: user.email || '',
-                created_at: new Date().toISOString()
-              })
-            });
-
-            if (!createResponse.ok) {
-              const createError = await createResponse.text();
-              console.error('Profile creation failed:', createError);
-              
-              // If it's a constraint violation, try one more update attempt
-              if (createError.includes('duplicate key') || createError.includes('23505')) {
-                console.log('Constraint violation detected, retrying update...');
-                const retryResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(user.email || '')}`, {
-                  method: 'PATCH',
-                  headers: {
-                    'Authorization': `Bearer ${supabaseServiceRoleKey}`,
-                    'apikey': supabaseServiceRoleKey,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation'
-                  },
-                  body: JSON.stringify({
-                    ...profileData,
-                    updated_at: new Date().toISOString()
-                  })
-                });
-                
-                if (retryResponse.ok) {
-                  const retryResult = await retryResponse.json();
-                  if (Array.isArray(retryResult) && retryResult.length > 0) {
-                    savedProfile = retryResult[0];
-                    console.log('Retry update successful:', savedProfile.id);
-                  } else {
-                    throw new Error('Profile exists but could not be updated');
-                  }
-                } else {
-                  const retryError = await retryResponse.text();
-                  throw new Error(`Failed to update existing profile: ${retryError}`);
-                }
-              } else {
-                throw new Error(`Failed to create profile: ${createError}`);
-              }
-            } else {
-              const createResult = await createResponse.json();
-              savedProfile = Array.isArray(createResult) ? createResult[0] : createResult;
-              console.log('Profile created successfully:', savedProfile.id);
-            }
-          }
-        } else {
-          const updateError = await updateResponse.text();
-          console.error('Update request failed:', updateError);
-          throw new Error(`Failed to update profile: ${updateError}`);
-        }
-      } catch (error) {
-        console.error('Profile operation error:', error);
-        throw error;
-      }
-
-      // If this is a society profile, handle society creation separately
-      if (profileData.account_type === 'society') {
-        const { society_name, society_category, society_description } = requestData;
-        
-        if (society_name) {
-          // Check if society already exists for this user
-          const existingSocietyResponse = await fetch(`${supabaseUrl}/rest/v1/societies?owner_user_id=eq.${userId}`, {
-            headers: {
-              'Authorization': `Bearer ${supabaseServiceRoleKey}`,
-              'apikey': supabaseServiceRoleKey,
-              'Content-Type': 'application/json'
-            }
+        if (!updateResponse.ok) {
+          const errorText = await updateResponse.text();
+          return new Response(JSON.stringify({ 
+            error: { 
+              code: 'PROFILE_UPDATE_ERROR', 
+              message: 'Failed to update user profile',
+              details: errorText 
+            } 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
-          
-          const existingSocieties = await existingSocietyResponse.json();
-          
-          if (!Array.isArray(existingSocieties) || existingSocieties.length === 0) {
-            // Find or create institute
-            let instituteId;
-            if (institute) {
-              const instituteResponse = await fetch(`${supabaseUrl}/rest/v1/institutes?name=eq.${encodeURIComponent(institute)}`, {
-                headers: {
-                  'Authorization': `Bearer ${supabaseServiceRoleKey}`,
-                  'apikey': supabaseServiceRoleKey,
-                  'Content-Type': 'application/json'
-                }
-              });
-              
-              const institutes = await instituteResponse.json();
-              if (Array.isArray(institutes) && institutes.length > 0) {
-                instituteId = institutes[0].id;
-              } else {
-                // Create new institute
-                const createInstituteResponse = await fetch(`${supabaseUrl}/rest/v1/institutes`, {
-                  method: 'POST',
-                  headers: {
-                    'Authorization': `Bearer ${supabaseServiceRoleKey}`,
-                    'apikey': supabaseServiceRoleKey,
-                    'Content-Type': 'application/json',
-                    'Prefer': 'return=representation'
-                  },
-                  body: JSON.stringify({ name: institute })
-                });
-                
-                if (createInstituteResponse.ok) {
-                  const newInstitute = await createInstituteResponse.json();
-                  instituteId = Array.isArray(newInstitute) ? newInstitute[0].id : newInstitute.id;
-                }
-              }
-            }
-            
-            // Create society if we have an institute
-            if (instituteId) {
-              const societyData = {
-                name: society_name,
-                institute_id: instituteId,
-                category: society_category || null,
-                owner_user_id: userId,
-                verified: false
-              };
-              
-              const societyResponse = await fetch(`${supabaseUrl}/rest/v1/societies`, {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${supabaseServiceRoleKey}`,
-                  'apikey': supabaseServiceRoleKey,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(societyData)
-              });
-              
-              if (!societyResponse.ok) {
-                const societyError = await societyResponse.text();
-                console.error('Society creation failed:', societyError);
-                // Don't throw error - profile creation succeeded, society creation is secondary
-              } else {
-                console.log('Society created successfully for user:', userId);
-              }
-            }
-          }
         }
-      }
 
-      return new Response(JSON.stringify({ data: savedProfile }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+        const updatedProfiles = await updateResponse.json();
+        const updatedProfile = updatedProfiles?.[0];
+
+        return new Response(JSON.stringify({ data: updatedProfile }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Profile update error:', error);
+        return new Response(JSON.stringify({ 
+          error: { 
+            code: 'PROFILE_UPDATE_ERROR', 
+            message: 'Failed to update user profile',
+            details: error.message 
+          } 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     }
 
-    throw new Error(`Unsupported method: ${req.method}`);
+    // Handle following societies endpoint
+    if (req.method === 'GET' && req.url.includes('/following')) {
+      try {
+        const url = new URL(req.url);
+        const limit = parseInt(url.searchParams.get('limit') || '10');
+        const cursor = url.searchParams.get('cursor');
+
+        let query = `user_id=eq.${userId}&select=society_id,created_at,societies(id,name,institute_id,category,description,verified)&order=created_at.desc&limit=${limit}`;
+        if (cursor) {
+          query += `&created_at=lt.${cursor}`;
+        }
+
+        const followsResponse = await fetch(`${supabaseUrl}/rest/v1/society_follows?${query}`, {
+          headers: {
+            'Authorization': `Bearer ${serviceRoleKey}`,
+            'apikey': serviceRoleKey,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!followsResponse.ok) {
+          const errorText = await followsResponse.text();
+          return new Response(JSON.stringify({ 
+            error: { 
+              code: 'FOLLOWING_FETCH_ERROR', 
+              message: 'Failed to fetch following societies',
+              details: errorText 
+            } 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        const follows = await followsResponse.json();
+        const societies = follows?.map(follow => follow.societies) || [];
+        const nextCursor = follows && follows.length === limit ? follows[follows.length - 1].created_at : null;
+
+        return new Response(JSON.stringify({ 
+          data: societies,
+          cursor: nextCursor
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('Following societies fetch error:', error);
+        return new Response(JSON.stringify({ 
+          error: { 
+            code: 'FOLLOWING_FETCH_ERROR', 
+            message: 'Failed to fetch following societies',
+            details: error.message 
+          } 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    return new Response(JSON.stringify({ error: { code: 'METHOD_NOT_ALLOWED', message: 'Method not allowed' } }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    });
 
   } catch (error) {
-    console.error('Profile management error:', error);
-    const errorResponse = {
+    console.error('Unexpected error:', error);
+    return new Response(JSON.stringify({
       error: {
-        code: 'PROFILE_ERROR',
-        message: error.message
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'An unexpected error occurred',
+        details: error.message
       }
-    };
-
-    return new Response(JSON.stringify(errorResponse), {
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
