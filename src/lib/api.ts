@@ -161,9 +161,9 @@ class CampusConnectAPI {
     return this.makeRequest(`/home-feed-api${query ? `?${query}` : ''}`)
   }
   
-  // Profile API
+  // Profile API - Fixed endpoint name
   async getProfile() {
-    return this.makeRequest('/profile-api')
+    return this.makeRequest('/profile-management')
   }
   
   async updateProfile(profileData: {
@@ -172,7 +172,7 @@ class CampusConnectAPI {
     institute?: string
     course?: string
   }) {
-    return this.makeRequest('/profile-api', {
+    return this.makeRequest('/profile-management', {
       method: 'PUT',
       body: JSON.stringify(profileData),
     })
@@ -193,7 +193,7 @@ class CampusConnectAPI {
     }
     
     const query = searchParams.toString()
-    return this.makeRequest(`/profile-api/following${query ? `?${query}` : ''}`)
+    return this.makeRequest(`/profile-management/following${query ? `?${query}` : ''}`)
   }
 
   // Media Upload API

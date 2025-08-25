@@ -22,15 +22,15 @@ export function BottomNavigation({ activeTab, onTabChange, unreadCount }: Bottom
       bgColor: 'bg-blue-50'
     },
     {
-      id: 'societies', 
+      id: 'search', 
       label: 'Discover',
       icon: Users,
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
     },
     {
-      id: 'search',
-      label: 'Search',
+      id: 'create',
+      label: 'Create',
       icon: Search,
       color: 'text-green-600',
       bgColor: 'bg-green-50'

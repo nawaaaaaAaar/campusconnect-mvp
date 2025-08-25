@@ -19,7 +19,7 @@ export async function signInWithEmail(email: string) {
   const { data, error } = await supabase.auth.signInWithOtp({
     email,
     options: {
-      emailRedirectTo: 'https://campusconnect-mvp.vercel.app/auth/callback'
+      emailRedirectTo: `${window.location.protocol}//${window.location.host}/auth/callback`
     }
   })
 

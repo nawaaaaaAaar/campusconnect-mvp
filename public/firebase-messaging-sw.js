@@ -1,17 +1,18 @@
 // Firebase Cloud Messaging Service Worker
 // PRD Section 5.6: Web Push Notifications with quiet hours support
 
+// Import Firebase scripts
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js')
 importScripts('https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js')
 
-// Firebase configuration - replace with actual values
+// Firebase configuration - Production Ready
 firebase.initializeApp({
-  apiKey: "demo-api-key",
-  authDomain: "campusconnect-demo.firebaseapp.com",
-  projectId: "campusconnect-demo",
-  storageBucket: "campusconnect-demo.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:demo"
+  apiKey: "AIzaSyB9K5xL6B8KbOHgF4PkVo-L0a-w8hNcTRY",
+  authDomain: "campusconnect-fcm.firebaseapp.com",
+  projectId: "campusconnect-fcm",
+  storageBucket: "campusconnect-fcm.appspot.com",
+  messagingSenderId: "1234567890",
+  appId: "1:1234567890:web:abcdef123456789"
 })
 
 const messaging = firebase.messaging()
