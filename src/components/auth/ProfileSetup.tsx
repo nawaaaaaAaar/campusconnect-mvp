@@ -93,7 +93,25 @@ export function ProfileSetup() {
       navigate('/dashboard')
     } catch (error: any) {
       console.error('Profile setup error:', error)
-      toast.error(error.message || 'Failed to create profile')
+      
+      // Provide more specific error messages based on error type
+      let errorMessage = 'Failed to create profile'
+      
+      if (error.message) {
+        if (error.message.includes('duplicate key') || error.message.includes('already exists')) {
+          errorMessage = 'Profile already exists. Please try refreshing the page and signing in again.'
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your connection and try again.'
+        } else if (error.message.includes('unauthorized') || error.message.includes('authentication')) {
+          errorMessage = 'Authentication error. Please sign in again.'
+        } else if (error.message.includes('validation') || error.message.includes('invalid')) {
+          errorMessage = 'Please check your information and try again.'
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }

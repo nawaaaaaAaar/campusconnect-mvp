@@ -59,9 +59,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setProfileLoading(true)
       const userProfile = await getUserProfile()
       setProfile(userProfile)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading profile:', error)
-      setProfile(null)
+      
+      // Handle specific error cases
+      if (error.message?.includes('Invalid authentication token') || 
+          error.message?.includes('No active session')) {
+        console.log('Authentication expired, profile set to null')
+        setProfile(null)
+      } else if (error.message?.includes('Failed to fetch profile')) {
+        console.log('Profile not found, user may need to complete setup')
+        setProfile(null)
+      } else {
+        // For other errors, still set profile to null to allow profile setup
+        console.log('Profile loading failed, user may need to complete setup')
+        setProfile(null)
+      }
     } finally {
       setProfileLoading(false)
     }

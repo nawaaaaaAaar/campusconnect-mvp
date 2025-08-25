@@ -77,33 +77,23 @@ Deno.serve(async (req) => {
 
       const profileData = {
         id: userId,
-        user_id: userId, // Add user_id mapping
-        email: user.email,
+        user_id: userId,
         name,
         avatar_url,
         institute,
         course: course || null,
-        account_type: account_type || 'student',
-        created_at: new Date().toISOString()
+        account_type: account_type || 'student'
       };
 
-      // Check if profile already exists
-      const existingResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
-        headers: {
-          'Authorization': `Bearer ${supabaseServiceRoleKey}`,
-          'apikey': supabaseServiceRoleKey,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const existingProfiles = await existingResponse.json();
-      const hasExistingProfile = Array.isArray(existingProfiles) && existingProfiles.length > 0;
+      console.log(`Attempting to upsert profile for user ${userId} with email ${user.email}`);
 
       let response;
-      if (hasExistingProfile) {
-        // Update existing profile (exclude id and created_at)
-        const { id, created_at, ...updateData } = profileData;
-        response = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
+      let savedProfile;
+
+      try {
+        // First, try to update the existing profile by email
+        console.log('Attempting to update existing profile...');
+        const updateResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(user.email)}`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${supabaseServiceRoleKey}`,
@@ -111,20 +101,89 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
           },
-          body: JSON.stringify(updateData)
+          body: JSON.stringify({
+            ...profileData,
+            updated_at: new Date().toISOString()
+          })
         });
-      } else {
-        // Create new profile using UPSERT to handle conflicts
-        response = await fetch(`${supabaseUrl}/rest/v1/profiles`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${supabaseServiceRoleKey}`,
-            'apikey': supabaseServiceRoleKey,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=representation,resolution=merge-duplicates'
-          },
-          body: JSON.stringify(profileData)
-        });
+
+        if (updateResponse.ok) {
+          const updateResult = await updateResponse.json();
+          console.log('Update response:', updateResult);
+          
+          if (Array.isArray(updateResult) && updateResult.length > 0) {
+            // Update successful - profile existed and was updated
+            savedProfile = updateResult[0];
+            console.log('Profile updated successfully:', savedProfile.id);
+          } else {
+            // No existing profile found, need to create new one
+            console.log('No existing profile found, creating new profile...');
+            
+            const createResponse = await fetch(`${supabaseUrl}/rest/v1/profiles`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${supabaseServiceRoleKey}`,
+                'apikey': supabaseServiceRoleKey,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+              },
+              body: JSON.stringify({
+                ...profileData,
+                email: user.email,
+                created_at: new Date().toISOString()
+              })
+            });
+
+            if (!createResponse.ok) {
+              const createError = await createResponse.text();
+              console.error('Profile creation failed:', createError);
+              
+              // If it's a constraint violation, try one more update attempt
+              if (createError.includes('duplicate key') || createError.includes('23505')) {
+                console.log('Constraint violation detected, retrying update...');
+                const retryResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(user.email)}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Authorization': `Bearer ${supabaseServiceRoleKey}`,
+                    'apikey': supabaseServiceRoleKey,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                  },
+                  body: JSON.stringify({
+                    ...profileData,
+                    updated_at: new Date().toISOString()
+                  })
+                });
+                
+                if (retryResponse.ok) {
+                  const retryResult = await retryResponse.json();
+                  if (Array.isArray(retryResult) && retryResult.length > 0) {
+                    savedProfile = retryResult[0];
+                    console.log('Retry update successful:', savedProfile.id);
+                  } else {
+                    throw new Error('Profile exists but could not be updated');
+                  }
+                } else {
+                  const retryError = await retryResponse.text();
+                  throw new Error(`Failed to update existing profile: ${retryError}`);
+                }
+              } else {
+                throw new Error(`Failed to create profile: ${createError}`);
+              }
+            } else {
+              const createResult = await createResponse.json();
+              savedProfile = Array.isArray(createResult) ? createResult[0] : createResult;
+              console.log('Profile created successfully:', savedProfile.id);
+            }
+          }
+        } else {
+          const updateError = await updateResponse.text();
+          console.error('Update request failed:', updateError);
+          throw new Error(`Failed to update profile: ${updateError}`);
+        }
+      } catch (error) {
+        console.error('Profile operation error:', error);
+        throw error;
       }
 
       // If this is a society profile, handle society creation separately
@@ -188,7 +247,7 @@ Deno.serve(async (req) => {
                 verified: false
               };
               
-              await fetch(`${supabaseUrl}/rest/v1/societies`, {
+              const societyResponse = await fetch(`${supabaseUrl}/rest/v1/societies`, {
                 method: 'POST',
                 headers: {
                   'Authorization': `Bearer ${supabaseServiceRoleKey}`,
@@ -197,20 +256,20 @@ Deno.serve(async (req) => {
                 },
                 body: JSON.stringify(societyData)
               });
+              
+              if (!societyResponse.ok) {
+                const societyError = await societyResponse.text();
+                console.error('Society creation failed:', societyError);
+                // Don't throw error - profile creation succeeded, society creation is secondary
+              } else {
+                console.log('Society created successfully for user:', userId);
+              }
             }
           }
         }
       }
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to save profile: ${errorText}`);
-      }
-
-      const savedProfile = await response.json();
-      const profile = Array.isArray(savedProfile) ? savedProfile[0] : savedProfile;
-
-      return new Response(JSON.stringify({ data: profile }), {
+      return new Response(JSON.stringify({ data: savedProfile }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
