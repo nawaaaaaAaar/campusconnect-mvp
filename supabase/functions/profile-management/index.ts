@@ -93,7 +93,11 @@ Deno.serve(async (req) => {
       try {
         // First, try to update the existing profile by email
         console.log('Attempting to update existing profile...');
-        const updateResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(user.email)}`, {
+        
+        // Add null check for user.email
+        const userEmail = user.email || '';
+        
+        const updateResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(userEmail)}`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${supabaseServiceRoleKey}`,
@@ -129,7 +133,7 @@ Deno.serve(async (req) => {
               },
               body: JSON.stringify({
                 ...profileData,
-                email: user.email,
+                email: user.email || '',
                 created_at: new Date().toISOString()
               })
             });
@@ -141,7 +145,7 @@ Deno.serve(async (req) => {
               // If it's a constraint violation, try one more update attempt
               if (createError.includes('duplicate key') || createError.includes('23505')) {
                 console.log('Constraint violation detected, retrying update...');
-                const retryResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(user.email)}`, {
+                const retryResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?email=eq.${encodeURIComponent(user.email || '')}`, {
                   method: 'PATCH',
                   headers: {
                     'Authorization': `Bearer ${supabaseServiceRoleKey}`,

@@ -88,18 +88,14 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
       console.log('Profile response:', response)
       
       if (response?.data?.society_memberships) {
-        // Filter for societies where user has posting permissions (owner, admin, editor)
-        const postingSocieties = response.data.society_memberships.filter(
-          (membership: any) => 
-            membership.role && 
-            ['owner', 'admin', 'editor'].includes(membership.role.toLowerCase())
-        )
+        // Allow all society members to post, regardless of role
+        const postingSocieties = response.data.society_memberships
         
         console.log('Posting societies:', postingSocieties)
         setSocieties(postingSocieties)
         
         if (postingSocieties.length === 0) {
-          toast.error('You do not have posting permissions for any society. Contact a society admin to get editor access.')
+          toast.error('You are not a member of any society. Join a society to create posts.')
         }
       } else {
         console.log('No society memberships found')
