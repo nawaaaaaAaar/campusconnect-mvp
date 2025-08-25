@@ -48,8 +48,14 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
             Post Creation Not Available
           </h3>
           <p className="text-gray-600 mb-4">
-            Only society accounts can create posts. As a student, you can like, comment, and share posts to engage with the campus community.
+            Only society accounts can create posts. As a student, you can engage with posts by liking, commenting, and sharing to stay connected with campus communities.
           </p>
+          <div className="space-y-2 text-sm text-gray-500 mb-4">
+            <p>✓ Like posts to show support</p>
+            <p>✓ Comment to join conversations</p>
+            <p>✓ Share interesting content</p>
+            <p>✓ Follow societies you're interested in</p>
+          </div>
           {onCancel && (
             <Button onClick={onCancel} variant="outline">
               Back to Dashboard
@@ -179,20 +185,32 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
   }
 
   const onSubmit = async (data: PostFormData) => {
+    if (!data.society_id) {
+      toast.error('Please select a society to post to')
+      return
+    }
+
     try {
       let mediaUrl = null
       if (mediaFile && (postType === 'image' || postType === 'video')) {
-        mediaUrl = await uploadMediaFile()
+        try {
+          mediaUrl = await uploadMediaFile()
+        } catch (uploadError) {
+          console.error('Media upload failed:', uploadError)
+          toast.error('Failed to upload media file. Please try again.')
+          return
+        }
       }
 
       const postData = {
         society_id: data.society_id,
         type: postType,
-        text: data.text,
+        text: data.text.trim(),
         media_url: mediaUrl,
         link_url: postType === 'link' ? data.link_url : undefined
       }
 
+      console.log('Creating post with data:', postData)
       await campusAPI.createPost(postData)
       
       toast.success('Post created successfully!')
@@ -202,7 +220,18 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
       setPostType('text')
       onSuccess?.()
     } catch (error: any) {
-      toast.error(error.message || 'Failed to create post')
+      console.error('Post creation error:', error)
+      
+      // Handle specific error types
+      if (error.message?.includes('FORBIDDEN')) {
+        toast.error('You do not have permission to post to this society')
+      } else if (error.message?.includes('VALIDATION_ERROR')) {
+        toast.error('Please fill in all required fields correctly')
+      } else if (error.message?.includes('PROFILE_NOT_FOUND')) {
+        toast.error('Your profile could not be found. Please refresh and try again.')
+      } else {
+        toast.error(error.message || 'Failed to create post. Please try again.')
+      }
     }
   }
 
@@ -267,17 +296,31 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
               {...register('text', { 
                 required: 'Post content is required',
                 minLength: { value: 10, message: 'Post must be at least 10 characters long' },
-                maxLength: { value: 2000, message: 'Post cannot exceed 2000 characters' }
+                maxLength: { value: 2000, message: 'Post cannot exceed 2000 characters' },
+                validate: (value) => {
+                  const trimmed = value.trim()
+                  if (trimmed.length < 10) {
+                    return 'Post must be at least 10 characters long'
+                  }
+                  if (trimmed.length > 2000) {
+                    return 'Post cannot exceed 2000 characters'
+                  }
+                  return true
+                }
               })}
-              placeholder="Share news, events, announcements, or just connect with your campus community..."
-              className="mt-1 min-h-[120px]"
+              placeholder="Share campus news, events, announcements, or connect with your community...\n\nTips:\n• Share upcoming events and activities\n• Highlight achievements and success stories\n• Post important announcements\n• Engage with campus community discussions"
+              className="mt-1 min-h-[140px] resize-y"
               maxLength={2000}
             />
             <div className="flex justify-between items-center mt-1">
               {errors.text && (
                 <p className="text-sm text-red-600">{errors.text.message}</p>
               )}
-              <p className="text-xs text-gray-500 ml-auto">
+              <p className={`text-xs ml-auto ${
+                (watch('text')?.length || 0) > 1800 
+                  ? 'text-orange-600 font-medium' 
+                  : 'text-gray-500'
+              }`}>
                 {watch('text')?.length || 0}/2000
               </p>
             </div>
@@ -308,36 +351,58 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
           {/* Media Upload */}
           <div className="space-y-4">
             <div className="flex items-center space-x-2">
-              <Label>Add Media</Label>
+              <Label>Add Media (Optional)</Label>
+              {postType === 'image' && (
+                <Badge variant="secondary" className="text-xs">
+                  <Image className="h-3 w-3 mr-1" />
+                  Image
+                </Badge>
+              )}
+              {postType === 'video' && (
+                <Badge variant="secondary" className="text-xs">
+                  <Video className="h-3 w-3 mr-1" />
+                  Video
+                </Badge>
+              )}
             </div>
             
             {mediaPreview ? (
               <div className="relative">
                 {postType === 'image' ? (
-                  <img 
-                    src={mediaPreview} 
-                    alt="Preview" 
-                    className="max-h-64 w-full object-cover rounded-lg"
-                  />
+                  <div className="relative">
+                    <img 
+                      src={mediaPreview} 
+                      alt="Preview" 
+                      className="max-h-64 w-full object-cover rounded-lg border"
+                    />
+                    <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded text-xs">
+                      {mediaFile?.name}
+                    </div>
+                  </div>
                 ) : (
-                  <video 
-                    src={mediaPreview} 
-                    controls 
-                    className="max-h-64 w-full rounded-lg"
-                  />
+                  <div className="relative">
+                    <video 
+                      src={mediaPreview} 
+                      controls 
+                      className="max-h-64 w-full rounded-lg border"
+                    />
+                    <div className="absolute bottom-2 left-2 bg-black bg-opacity-60 text-white px-2 py-1 rounded text-xs">
+                      {mediaFile?.name}
+                    </div>
+                  </div>
                 )}
                 <Button
                   type="button"
                   variant="destructive"
                   size="sm"
-                  className="absolute top-2 right-2"
+                  className="absolute top-2 right-2 h-8 w-8 p-0"
                   onClick={removeMedia}
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
             ) : (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors">
                 <div className="text-center">
                   <Upload className="mx-auto h-12 w-12 text-gray-400" />
                   <div className="mt-4">
@@ -346,9 +411,10 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
                       variant="outline"
                       onClick={() => fileInputRef.current?.click()}
                       className="relative"
+                      disabled={isUploading}
                     >
                       <Image className="h-4 w-4 mr-2" />
-                      Upload Image/Video
+                      Upload Media
                     </Button>
                     <Input
                       ref={fileInputRef}
@@ -358,52 +424,67 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
                       className="hidden"
                     />
                   </div>
-                  <p className="mt-2 text-xs text-gray-500">
-                    Images: JPEG, PNG, WebP, GIF (max 10MB)<br />
-                    Videos: MP4, WebM, MOV (max 50MB)
-                  </p>
+                  <div className="mt-3 space-y-1 text-xs text-gray-500">
+                    <p className="font-medium">Supported formats:</p>
+                    <p>Images: JPEG, PNG, WebP, GIF (max 10MB)</p>
+                    <p>Videos: MP4, WebM, MOV (max 50MB)</p>
+                  </div>
                 </div>
               </div>
             )}
 
             {isUploading && (
-              <div className="space-y-2">
+              <div className="space-y-2 bg-blue-50 p-3 rounded-lg">
                 <div className="flex items-center space-x-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-gray-600">Uploading media...</span>
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                  <span className="text-sm text-blue-700 font-medium">
+                    Uploading {postType}... Please don't leave this page
+                  </span>
                 </div>
                 <Progress value={uploadProgress} className="h-2" />
+                <p className="text-xs text-blue-600">
+                  {uploadProgress}% complete
+                </p>
               </div>
             )}
           </div>
 
-          {/* Post Type Buttons */}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant={postType === 'text' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => {
-                setPostType('text')
-                setValue('type', 'text')
-                removeMedia()
-              }}
-            >
-              Text Post
-            </Button>
-            <Button
-              type="button"
-              variant={postType === 'link' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => {
-                setPostType('link')
-                setValue('type', 'link')
-                removeMedia()
-              }}
-            >
-              <Link className="h-4 w-4 mr-1" />
-              Link Post
-            </Button>
+          {/* Post Type Selection */}
+          <div className="space-y-3">
+            <Label>Post Type</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant={postType === 'text' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setPostType('text')
+                  setValue('type', 'text')
+                  removeMedia()
+                }}
+                className="justify-start"
+              >
+                <span className="mr-2">📝</span>
+                Text Post
+              </Button>
+              <Button
+                type="button"
+                variant={postType === 'link' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => {
+                  setPostType('link')
+                  setValue('type', 'link')
+                  removeMedia()
+                }}
+                className="justify-start"
+              >
+                <Link className="h-4 w-4 mr-2" />
+                Link Post
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500">
+              Select "Text Post" for general content. Upload images/videos to create media posts automatically.
+            </p>
           </div>
 
           {/* Actions */}
