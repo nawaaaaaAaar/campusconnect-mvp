@@ -36,14 +36,25 @@ export function AuthCallback() {
               const { getUserProfile } = await import('../../lib/supabase')
               const profile = await getUserProfile()
               
-              if (!profile || !profile.profile_complete) {
-                navigate('/profile-setup')
+              if (!profile || !profile.name) {
+                // Get account type from sessionStorage
+                const selectedAccountType = sessionStorage.getItem('selectedAccountType')
+                if (selectedAccountType) {
+                  navigate(`/profile-setup?accountType=${selectedAccountType}`)
+                } else {
+                  navigate('/profile-setup')
+                }
               } else {
                 navigate('/dashboard')
               }
             } catch (profileError) {
               console.log('No profile found, redirecting to profile setup')
-              navigate('/profile-setup')
+              const selectedAccountType = sessionStorage.getItem('selectedAccountType')
+              if (selectedAccountType) {
+                navigate(`/profile-setup?accountType=${selectedAccountType}`)
+              } else {
+                navigate('/profile-setup')
+              }
             }
             return
           }
@@ -89,14 +100,25 @@ export function AuthCallback() {
               const { getUserProfile } = await import('../../lib/supabase')
               const profile = await getUserProfile()
               
-              if (!profile || !profile.profile_complete) {
-                navigate('/profile-setup')
+              if (!profile || !profile.name) {
+                // Get account type from sessionStorage
+                const selectedAccountType = sessionStorage.getItem('selectedAccountType')
+                if (selectedAccountType) {
+                  navigate(`/profile-setup?accountType=${selectedAccountType}`)
+                } else {
+                  navigate('/profile-setup')
+                }
               } else {
                 navigate('/dashboard')
               }
             } catch (profileError) {
               console.log('No profile found, redirecting to profile setup')
-              navigate('/profile-setup')
+              const selectedAccountType = sessionStorage.getItem('selectedAccountType')
+              if (selectedAccountType) {
+                navigate(`/profile-setup?accountType=${selectedAccountType}`)
+              } else {
+                navigate('/profile-setup')
+              }
             }
             return
           }

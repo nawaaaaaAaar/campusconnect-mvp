@@ -66,17 +66,24 @@ Deno.serve(async (req) => {
     }
 
     if (req.method === 'POST' || req.method === 'PUT') {
-      // Create or update user profile using PRD schema
+      // Create or update user profile with support for both students and societies
       const requestData = await req.json();
-      const { name, avatar_url, institute, course } = requestData;
+      const { name, avatar_url, institute, course, account_type, bio } = requestData;
+
+      // Validate account_type
+      if (account_type && !['student', 'society'].includes(account_type)) {
+        throw new Error('Invalid account_type. Must be either "student" or "society"');
+      }
 
       const profileData = {
         id: userId,
+        user_id: userId, // Add user_id mapping
         email: user.email,
         name,
         avatar_url,
         institute,
-        course,
+        course: course || null,
+        account_type: account_type || 'student',
         created_at: new Date().toISOString()
       };
 
@@ -107,7 +114,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify(updateData)
         });
       } else {
-        // Create new profile (upsert to avoid conflicts)
+        // Create new profile using UPSERT to handle conflicts
         response = await fetch(`${supabaseUrl}/rest/v1/profiles`, {
           method: 'POST',
           headers: {
@@ -118,6 +125,81 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify(profileData)
         });
+      }
+
+      // If this is a society profile, handle society creation separately
+      if (profileData.account_type === 'society') {
+        const { society_name, society_category, society_description } = requestData;
+        
+        if (society_name) {
+          // Check if society already exists for this user
+          const existingSocietyResponse = await fetch(`${supabaseUrl}/rest/v1/societies?owner_user_id=eq.${userId}`, {
+            headers: {
+              'Authorization': `Bearer ${supabaseServiceRoleKey}`,
+              'apikey': supabaseServiceRoleKey,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          const existingSocieties = await existingSocietyResponse.json();
+          
+          if (!Array.isArray(existingSocieties) || existingSocieties.length === 0) {
+            // Find or create institute
+            let instituteId;
+            if (institute) {
+              const instituteResponse = await fetch(`${supabaseUrl}/rest/v1/institutes?name=eq.${encodeURIComponent(institute)}`, {
+                headers: {
+                  'Authorization': `Bearer ${supabaseServiceRoleKey}`,
+                  'apikey': supabaseServiceRoleKey,
+                  'Content-Type': 'application/json'
+                }
+              });
+              
+              const institutes = await instituteResponse.json();
+              if (Array.isArray(institutes) && institutes.length > 0) {
+                instituteId = institutes[0].id;
+              } else {
+                // Create new institute
+                const createInstituteResponse = await fetch(`${supabaseUrl}/rest/v1/institutes`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${supabaseServiceRoleKey}`,
+                    'apikey': supabaseServiceRoleKey,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                  },
+                  body: JSON.stringify({ name: institute })
+                });
+                
+                if (createInstituteResponse.ok) {
+                  const newInstitute = await createInstituteResponse.json();
+                  instituteId = Array.isArray(newInstitute) ? newInstitute[0].id : newInstitute.id;
+                }
+              }
+            }
+            
+            // Create society if we have an institute
+            if (instituteId) {
+              const societyData = {
+                name: society_name,
+                institute_id: instituteId,
+                category: society_category || null,
+                owner_user_id: userId,
+                verified: false
+              };
+              
+              await fetch(`${supabaseUrl}/rest/v1/societies`, {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${supabaseServiceRoleKey}`,
+                  'apikey': supabaseServiceRoleKey,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(societyData)
+              });
+            }
+          }
+        }
       }
 
       if (!response.ok) {

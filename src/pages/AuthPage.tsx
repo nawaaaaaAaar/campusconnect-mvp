@@ -4,10 +4,10 @@ import { SignupForm } from '../components/auth/SignupForm'
 import { OTPForm } from '../components/auth/OTPForm'
 import { AccountTypeSelection } from '../components/auth/AccountTypeSelection'
 
-type AuthStep = 'login' | 'account-type' | 'signup' | 'otp'
+type AuthStep = 'account-type' | 'login' | 'signup' | 'otp'
 
 export function AuthPage() {
-  const [currentStep, setCurrentStep] = useState<AuthStep>('login')
+  const [currentStep, setCurrentStep] = useState<AuthStep>('account-type')
   const [email, setEmail] = useState('')
   const [accountType, setAccountType] = useState<'student' | 'society' | null>(null)
 
@@ -16,24 +16,38 @@ export function AuthPage() {
     setCurrentStep('otp')
   }
 
+  const handleSwitchToLogin = () => {
+    if (!accountType) {
+      setCurrentStep('account-type')
+    } else {
+      setCurrentStep('login')
+    }
+  }
+
   const handleSwitchToSignup = () => {
-    setCurrentStep('account-type')
+    if (!accountType) {
+      setCurrentStep('account-type')
+    } else {
+      setCurrentStep('signup')
+    }
   }
 
   const handleAccountTypeSelection = (type: 'student' | 'society') => {
     setAccountType(type)
-    setCurrentStep('signup')
+    // Store account type in sessionStorage to persist through OAuth
+    sessionStorage.setItem('selectedAccountType', type)
+    setCurrentStep('login')
   }
 
   const handleBackToLogin = () => {
     setCurrentStep('login')
     setEmail('')
-    setAccountType(null)
   }
 
   const handleBackToAccountType = () => {
     setCurrentStep('account-type')
     setAccountType(null)
+    sessionStorage.removeItem('selectedAccountType')
   }
 
   const handleSignupSuccess = () => {
@@ -43,23 +57,24 @@ export function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-purple-50 p-4">
-      {currentStep === 'login' && (
-        <LoginForm 
-          onSwitchToOTP={handleSwitchToOTP} 
-          onSwitchToSignup={handleSwitchToSignup}
-        />
-      )}
       {currentStep === 'account-type' && (
         <AccountTypeSelection
           onSelectType={handleAccountTypeSelection}
-          onBack={handleBackToLogin}
+        />
+      )}
+      {currentStep === 'login' && accountType && (
+        <LoginForm 
+          accountType={accountType}
+          onSwitchToOTP={handleSwitchToOTP} 
+          onSwitchToSignup={handleSwitchToSignup}
+          onBack={handleBackToAccountType}
         />
       )}
       {currentStep === 'signup' && accountType && (
         <SignupForm 
           accountType={accountType}
-          onBack={handleBackToAccountType}
-          onSuccess={handleSignupSuccess}
+          onBack={handleSwitchToLogin}
+          onSuccess={() => setCurrentStep('login')}
         />
       )}
       {currentStep === 'otp' && (

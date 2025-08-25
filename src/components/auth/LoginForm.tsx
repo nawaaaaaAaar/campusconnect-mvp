@@ -3,17 +3,19 @@ import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
-import { Loader2, Mail, Eye, EyeOff, UserPlus } from 'lucide-react'
+import { Loader2, Mail, Eye, EyeOff, UserPlus, ArrowLeft } from 'lucide-react'
 import { signInWithEmail, signInWithGoogle } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { toast } from 'sonner'
 
 interface LoginFormProps {
+  accountType: 'student' | 'society'
   onSwitchToOTP: (email: string) => void
   onSwitchToSignup: () => void
+  onBack: () => void
 }
 
-export function LoginForm({ onSwitchToOTP, onSwitchToSignup }: LoginFormProps) {
+export function LoginForm({ accountType, onSwitchToOTP, onSwitchToSignup, onBack }: LoginFormProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -64,7 +66,7 @@ export function LoginForm({ onSwitchToOTP, onSwitchToSignup }: LoginFormProps) {
   const handleGoogleAuth = async () => {
     setGoogleLoading(true)
     try {
-      await signInWithGoogle()
+      await signInWithGoogle(accountType)
       // Note: User will be redirected to Google, so no success message needed here
     } catch (error: any) {
       console.error('Google auth error:', error)
@@ -81,7 +83,9 @@ export function LoginForm({ onSwitchToOTP, onSwitchToSignup }: LoginFormProps) {
           <span className="text-white font-bold text-xl">CC</span>
         </div>
         <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-        <CardDescription>Sign in to your CampusConnect account</CardDescription>
+        <CardDescription>
+          Sign in to your {accountType === 'society' ? 'Society' : 'Student'} account
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Tabs defaultValue="password" className="w-full">
@@ -222,6 +226,17 @@ export function LoginForm({ onSwitchToOTP, onSwitchToSignup }: LoginFormProps) {
           >
             <UserPlus className="mr-2 h-4 w-4" />
             Don't have an account? Sign up
+          </Button>
+        </div>
+        
+        <div className="text-center">
+          <Button 
+            variant="ghost" 
+            className="text-sm text-muted-foreground hover:text-primary"
+            onClick={onBack}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Account Type Selection
           </Button>
         </div>
       </CardContent>

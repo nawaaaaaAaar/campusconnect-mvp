@@ -49,6 +49,11 @@ export async function verifyOTP(email: string, otp: string) {
 export async function signInWithGoogle(accountType?: 'student' | 'society') {
   const redirectTo = `${window.location.protocol}//${window.location.host}/auth/callback`;
   
+  // Store account type in sessionStorage for OAuth callback
+  if (accountType) {
+    sessionStorage.setItem('selectedAccountType', accountType);
+  }
+  
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
@@ -56,7 +61,9 @@ export async function signInWithGoogle(accountType?: 'student' | 'society') {
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
-      }
+      },
+      // Pass account type in the OAuth state (optional, as backup)
+      scopes: 'openid email profile'
     }
   })
 
@@ -135,6 +142,10 @@ export async function createOrUpdateProfile(profileData: {
   course?: string
   interests?: string[]
   account_type?: 'student' | 'society'
+  // Society-specific fields
+  society_name?: string
+  society_category?: string
+  society_description?: string
 }) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('User not authenticated')

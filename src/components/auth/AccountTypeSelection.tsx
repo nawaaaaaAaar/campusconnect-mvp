@@ -5,10 +5,9 @@ import { Users, GraduationCap, ArrowRight } from 'lucide-react'
 
 interface AccountTypeSelectionProps {
   onSelectType: (type: 'student' | 'society') => void
-  onBack?: () => void
 }
 
-export function AccountTypeSelection({ onSelectType, onBack }: AccountTypeSelectionProps) {
+export function AccountTypeSelection({ onSelectType }: AccountTypeSelectionProps) {
   return (
     <Card className="w-full max-w-lg">
       <CardHeader className="text-center">
@@ -102,16 +101,6 @@ export function AccountTypeSelection({ onSelectType, onBack }: AccountTypeSelect
             </CardContent>
           </Card>
         </div>
-
-        {onBack && (
-          <Button 
-            variant="ghost" 
-            className="w-full mt-6"
-            onClick={onBack}
-          >
-            Back to Sign In
-          </Button>
-        )}
 
         <div className="text-center text-sm text-muted-foreground">
           You can always update your account settings later.
