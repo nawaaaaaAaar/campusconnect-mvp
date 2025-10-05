@@ -53,7 +53,23 @@ export function Dashboard() {
   // Register service worker for push notifications
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
-      navigator.serviceWorker.register('/firebase-messaging-sw.js')
+      const params = new URLSearchParams()
+      const apiKey = import.meta.env.VITE_FIREBASE_API_KEY as string | undefined
+      const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined
+      const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined
+      const messagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string | undefined
+      const appId = (import.meta as any).env.VITE_FIREBASE_APP_ID as string | undefined
+      const storageBucket = (import.meta as any).env.VITE_FIREBASE_STORAGE_BUCKET as string | undefined
+
+      if (apiKey) params.set('apiKey', apiKey)
+      if (authDomain) params.set('authDomain', authDomain)
+      if (projectId) params.set('projectId', projectId)
+      if (messagingSenderId) params.set('messagingSenderId', messagingSenderId)
+      if (appId) params.set('appId', appId)
+      if (storageBucket) params.set('storageBucket', storageBucket)
+
+      const swUrl = `/firebase-messaging-sw.js${params.toString() ? `?${params.toString()}` : ''}`
+      navigator.serviceWorker.register(swUrl)
         .then((registration) => {
           console.log('Service Worker registered:', registration)
         })

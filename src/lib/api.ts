@@ -2,7 +2,7 @@ import { supabase } from './supabase'
 
 // API Service for CampusConnect Backend
 class CampusConnectAPI {
-  private baseUrl = 'https://egdavxjkyxvawgguqmvx.supabase.co/functions/v1'
+  private baseUrl = `${(import.meta.env.VITE_SUPABASE_URL as string) || 'http://localhost:54321'}/functions/v1`
   
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
     const { data: { session } } = await supabase.auth.getSession()
