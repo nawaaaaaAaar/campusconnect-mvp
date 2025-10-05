@@ -23,6 +23,7 @@ export function AccountTypeSelection({ onSelectType }: AccountTypeSelectionProps
           <Card 
             className="cursor-pointer transition-all hover:shadow-lg hover:border-blue-300 group"
             onClick={() => onSelectType('student')}
+            data-testid="account-type-student"
           >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -64,6 +65,7 @@ export function AccountTypeSelection({ onSelectType }: AccountTypeSelectionProps
           <Card 
             className="cursor-pointer transition-all hover:shadow-lg hover:border-purple-300 group"
             onClick={() => onSelectType('society')}
+            data-testid="account-type-society"
           >
             <CardContent className="p-6">
               <div className="flex items-center justify-between">

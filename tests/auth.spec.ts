@@ -5,7 +5,9 @@ test.describe('Authentication Flow', () => {
     await page.goto('/auth', { waitUntil: 'networkidle' });
 
     // Select account type first (Student)
-    await page.getByRole('heading', { name: 'Student' }).click();
+    const studentCard = page.getByTestId('account-type-student')
+    await studentCard.waitFor({ state: 'visible', timeout: 10000 })
+    await studentCard.click()
 
     // Check if login form elements are present
     await expect(page.getByText('Welcome Back')).toBeVisible();
@@ -19,7 +21,9 @@ test.describe('Authentication Flow', () => {
     await page.goto('/auth', { waitUntil: 'networkidle' });
 
     // Select account type first (Student)
-    await page.getByRole('heading', { name: 'Student' }).click();
+    const studentCard2 = page.getByTestId('account-type-student')
+    await studentCard2.waitFor({ state: 'visible', timeout: 10000 })
+    await studentCard2.click()
 
     // Click on signup link
     await page.getByRole('button', { name: "Don't have an account? Sign up" }).click();
@@ -35,7 +39,9 @@ test.describe('Authentication Flow', () => {
     await page.goto('/auth', { waitUntil: 'networkidle' });
 
     // Select account type first (Student)
-    await page.getByRole('heading', { name: 'Student' }).click();
+    const studentCard3 = page.getByTestId('account-type-student')
+    await studentCard3.waitFor({ state: 'visible', timeout: 10000 })
+    await studentCard3.click()
 
     // Navigate to signup
     await page.getByRole('button', { name: "Don't have an account? Sign up" }).click();
