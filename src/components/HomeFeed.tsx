@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent } from './ui/card'
 import { Button } from './ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
@@ -63,11 +63,7 @@ export function HomeFeed() {
   const [newComments, setNewComments] = useState<{ [postId: string]: string }>({})
   const [commentLoading, setCommentLoading] = useState<Set<string>>(new Set())
 
-  useEffect(() => {
-    loadFeed()
-  }, [])
-
-  const loadFeed = async (loadMore = false) => {
+  const loadFeed = useCallback(async (loadMore = false) => {
     setLoading(true)
     try {
       const params: any = { limit: 20 }
@@ -92,7 +88,11 @@ export function HomeFeed() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [cursor])
+
+  useEffect(() => {
+    loadFeed()
+  }, [loadFeed])
 
   const handleLike = async (post: Post) => {
     try {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Switch } from './ui/switch'
@@ -43,12 +43,7 @@ export function NotificationSettings() {
   const [loading, setLoading] = useState(false)
   const [initializing, setInitializing] = useState(false)
 
-  useEffect(() => {
-    loadPreferences()
-    updateFCMSettings()
-  }, [])
-
-  const loadPreferences = async () => {
+  const loadPreferences = useCallback(async () => {
     try {
       const response = await campusAPI.getNotificationPreferences()
       if (response.data) {
@@ -57,12 +52,17 @@ export function NotificationSettings() {
     } catch (error: any) {
       console.error('Failed to load notification preferences:', error)
     }
-  }
+  }, [preferences])
 
   const updateFCMSettings = () => {
     const settings = notificationService.getSettings()
     setFcmSettings(settings)
   }
+
+  useEffect(() => {
+    loadPreferences()
+    updateFCMSettings()
+  }, [loadPreferences])
 
   const updatePreferences = async (newPreferences: Partial<NotificationPreferences>) => {
     setLoading(true)

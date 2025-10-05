@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { campusAPI, type Society, type Post } from '../lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
@@ -38,20 +38,7 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
   const [postsLoading, setPostsLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
 
-  useEffect(() => {
-    loadSocietyData()
-  }, [societyId])
-
-  useEffect(() => {
-    if (activeTab === 'members' && members.length === 0) {
-      loadMembers()
-    }
-    if (activeTab === 'posts' && posts.length === 0) {
-      loadPosts()
-    }
-  }, [activeTab])
-
-  const loadSocietyData = async () => {
+  const loadSocietyData = useCallback(async () => {
     setLoading(true)
     try {
       const response = await campusAPI.getSociety(societyId)
@@ -62,13 +49,15 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [societyId])
 
-  const loadMembers = async () => {
+  useEffect(() => {
+    loadSocietyData()
+  }, [loadSocietyData])
+
+  const loadMembers = useCallback(async () => {
     setMembersLoading(true)
     try {
-      // This would need to be implemented in the backend
-      // For now, we'll use a placeholder API call
       const response = await fetch(`https://egdavxjkyxvawgguqmvx.supabase.co/rest/v1/society_members?society_id=eq.${societyId}&select=*,profiles(id,email,name,avatar_url)`, {
         headers: {
           'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnZGF2eGpreXh2YXdnZ3VxbXZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5NTMzNDQsImV4cCI6MjA3MTUyOTM0NH0.TeY_4HnYLDyC6DUNJfmCFrmkjjwIneNoctwFxocFfq4',
@@ -79,17 +68,14 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
       setMembers(membersData || [])
     } catch (error: any) {
       console.error('Members load error:', error)
-      // Don't show error toast for members loading failure
     } finally {
       setMembersLoading(false)
     }
-  }
+  }, [societyId])
 
-  const loadPosts = async () => {
+  const loadPosts = useCallback(async () => {
     setPostsLoading(true)
     try {
-      // This would need an API endpoint for society-specific posts
-      // For now, we'll use a placeholder
       const response = await fetch(`https://egdavxjkyxvawgguqmvx.supabase.co/rest/v1/posts?society_id=eq.${societyId}&select=*&order=created_at.desc&limit=10`, {
         headers: {
           'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnZGF2eGpreXh2YXdnZ3VxbXZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5NTMzNDQsImV4cCI6MjA3MTUyOTM0NH0.TeY_4HnYLDyC6DUNJfmCFrmkjjwIneNoctwFxocFfq4',
@@ -103,7 +89,16 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
     } finally {
       setPostsLoading(false)
     }
-  }
+  }, [societyId])
+
+  useEffect(() => {
+    if (activeTab === 'members' && members.length === 0) {
+      loadMembers()
+    }
+    if (activeTab === 'posts' && posts.length === 0) {
+      loadPosts()
+    }
+  }, [activeTab, loadMembers, loadPosts, members.length, posts.length])
 
   const handleFollowToggle = async () => {
     if (!society) return

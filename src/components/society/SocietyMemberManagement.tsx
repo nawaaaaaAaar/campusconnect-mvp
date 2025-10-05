@@ -1,7 +1,7 @@
 // Society Member Management Component - Production Implementation with Real API Integration
 // PRD Section 5.7: Handles roster management and member invitations with real database
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -48,11 +48,7 @@ export function SocietyMemberManagement({ societyId, onClose }: SocietyMemberMan
   const [inviteLoading, setInviteLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadData()
-  }, [societyId])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -86,7 +82,11 @@ export function SocietyMemberManagement({ societyId, onClose }: SocietyMemberMan
     } finally {
       setLoading(false)
     }
-  }
+  }, [societyId])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const sendInvitation = async () => {
     if (!newInviteEmail.trim()) {

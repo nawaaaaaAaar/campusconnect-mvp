@@ -76,7 +76,7 @@ export function useHomeFeed() {
   // Initial load
   useEffect(() => {
     loadFeed()
-  }, [])
+  }, [loadFeed])
 
   return {
     posts,

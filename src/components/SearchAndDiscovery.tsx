@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Input } from './ui/input'
 import { Button } from './ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
@@ -43,30 +43,28 @@ export function SearchAndDiscovery({ searchQuery, onSearchChange }: SearchAndDis
   const [selectedInstitute, setSelectedInstitute] = useState<string>('')
   const [showVerifiedOnly, setShowVerifiedOnly] = useState(false)
   const [selectedSociety, setSelectedSociety] = useState<Society | null>(null)
-  const [searchTimer, setSearchTimer] = useState<NodeJS.Timeout | null>(null)
+  const searchTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   // PRD Section 5.2: Typeahead search ≤500ms
   useEffect(() => {
-    if (searchTimer) {
-      clearTimeout(searchTimer)
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current)
     }
     
-    const timer = setTimeout(() => {
+    searchTimerRef.current = setTimeout(() => {
       if (query.trim() || selectedCategory || selectedInstitute) {
         performSearch()
       } else {
         loadFeaturedSocieties()
       }
-    }, 300) // Under 500ms requirement
-    
-    setSearchTimer(timer)
+    }, 300)
     
     return () => {
-      if (timer) clearTimeout(timer)
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     }
-  }, [query, selectedCategory, selectedInstitute, showVerifiedOnly])
+  }, [query, selectedCategory, selectedInstitute, showVerifiedOnly, performSearch, loadFeaturedSocieties])
 
-  const performSearch = async () => {
+  const performSearch = useCallback(async () => {
     setLoading(true)
     try {
       const params: any = {
@@ -97,9 +95,9 @@ export function SearchAndDiscovery({ searchQuery, onSearchChange }: SearchAndDis
     } finally {
       setLoading(false)
     }
-  }
+  }, [query, selectedCategory, selectedInstitute, showVerifiedOnly])
 
-  const loadFeaturedSocieties = async () => {
+  const loadFeaturedSocieties = useCallback(async () => {
     setLoading(true)
     try {
       const response = await campusAPI.getSocieties({
@@ -113,7 +111,7 @@ export function SearchAndDiscovery({ searchQuery, onSearchChange }: SearchAndDis
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const handleSearchChange = (value: string) => {
     setQuery(value)
