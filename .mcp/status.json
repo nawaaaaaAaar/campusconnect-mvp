@@ -1,0 +1,208 @@
+{
+  "timestamp": "2025-10-05T08:31:38.066Z",
+  "total_mcps": 15,
+  "configured": 12,
+  "needs_configuration": 0,
+  "needs_setup": 3,
+  "servers": {
+    "git": {
+      "name": "Git MCP",
+      "description": "Git repository management and version control",
+      "tools": [
+        "git_status",
+        "git_log",
+        "git_diff",
+        "git_commit",
+        "git_push",
+        "git_pull"
+      ],
+      "status": "configured"
+    },
+    "filesystem": {
+      "name": "File System MCP",
+      "description": "File and directory operations",
+      "tools": [
+        "read_file",
+        "write_file",
+        "list_directory",
+        "create_directory",
+        "delete_file"
+      ],
+      "status": "configured"
+    },
+    "terminal": {
+      "name": "Terminal MCP",
+      "description": "Command line execution and shell operations",
+      "tools": [
+        "run_command",
+        "execute_script",
+        "check_process",
+        "kill_process"
+      ],
+      "status": "configured"
+    },
+    "supabase": {
+      "name": "Supabase MCP",
+      "description": "Supabase database and authentication management",
+      "tools": [
+        "query_database",
+        "create_record",
+        "update_record",
+        "delete_record",
+        "auth_user"
+      ],
+      "status": "configured",
+      "required_env": [
+        "SUPABASE_URL",
+        "SUPABASE_ANON_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY"
+      ]
+    },
+    "postgres": {
+      "name": "PostgreSQL MCP",
+      "description": "Direct PostgreSQL database operations",
+      "tools": [
+        "execute_sql",
+        "create_table",
+        "alter_table",
+        "backup_database"
+      ],
+      "status": "configured",
+      "required_env": [
+        "POSTGRES_URL"
+      ]
+    },
+    "react": {
+      "name": "React MCP",
+      "description": "React component development and management",
+      "tools": [
+        "create_component",
+        "update_component",
+        "analyze_components",
+        "optimize_components"
+      ],
+      "status": "configured"
+    },
+    "typescript": {
+      "name": "TypeScript MCP",
+      "description": "TypeScript type checking and code analysis",
+      "tools": [
+        "check_types",
+        "generate_types",
+        "refactor_code",
+        "analyze_errors"
+      ],
+      "status": "configured"
+    },
+    "tailwind": {
+      "name": "Tailwind CSS MCP",
+      "description": "Tailwind CSS class management and optimization",
+      "tools": [
+        "generate_classes",
+        "optimize_css",
+        "purge_unused",
+        "analyze_styles"
+      ],
+      "status": "configured"
+    },
+    "jest": {
+      "name": "Jest MCP",
+      "description": "Unit testing and test generation",
+      "tools": [
+        "run_tests",
+        "generate_tests",
+        "analyze_coverage",
+        "debug_tests"
+      ],
+      "status": "needs_setup",
+      "required_packages": [
+        "jest",
+        "@types/jest"
+      ]
+    },
+    "eslint": {
+      "name": "ESLint MCP",
+      "description": "Code linting and quality analysis",
+      "tools": [
+        "lint_code",
+        "fix_issues",
+        "analyze_quality",
+        "generate_rules"
+      ],
+      "status": "configured"
+    },
+    "playwright": {
+      "name": "Playwright MCP",
+      "description": "End-to-end testing and browser automation",
+      "tools": [
+        "run_e2e_tests",
+        "generate_tests",
+        "record_actions",
+        "analyze_performance"
+      ],
+      "status": "needs_setup",
+      "required_packages": [
+        "@playwright/test"
+      ]
+    },
+    "vercel": {
+      "name": "Vercel MCP",
+      "description": "Vercel deployment and management",
+      "tools": [
+        "deploy_app",
+        "check_status",
+        "manage_domains",
+        "view_logs"
+      ],
+      "status": "configured",
+      "required_env": [
+        "VERCEL_TOKEN",
+        "VERCEL_PROJECT_ID"
+      ]
+    },
+    "docker": {
+      "name": "Docker MCP",
+      "description": "Docker containerization and management",
+      "tools": [
+        "build_image",
+        "run_container",
+        "manage_containers",
+        "optimize_image"
+      ],
+      "status": "needs_setup",
+      "required_packages": [
+        "docker"
+      ]
+    },
+    "sentry": {
+      "name": "Sentry MCP",
+      "description": "Error tracking and performance monitoring",
+      "tools": [
+        "track_errors",
+        "analyze_performance",
+        "create_alerts",
+        "view_dashboard"
+      ],
+      "status": "configured",
+      "required_env": [
+        "SENTRY_DSN",
+        "SENTRY_ORG"
+      ]
+    },
+    "firebase": {
+      "name": "Firebase MCP",
+      "description": "Firebase services and push notifications",
+      "tools": [
+        "send_notification",
+        "manage_users",
+        "analyze_usage",
+        "configure_settings"
+      ],
+      "status": "configured",
+      "required_env": [
+        "FIREBASE_PROJECT_ID",
+        "FIREBASE_PRIVATE_KEY"
+      ]
+    }
+  }
+}

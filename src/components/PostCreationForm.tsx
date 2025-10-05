@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { campusAPI } from '../lib/api'
 import { Button } from './ui/button'
@@ -38,34 +38,6 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
   const [loadingSocieties, setLoadingSocieties] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Check account type - only societies can create posts
-  if (profile?.account_type !== 'society') {
-    return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardContent className="py-12 text-center">
-          <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-            Post Creation Not Available
-          </h3>
-          <p className="text-gray-600 mb-4">
-            Only society accounts can create posts. As a student, you can engage with posts by liking, commenting, and sharing to stay connected with campus communities.
-          </p>
-          <div className="space-y-2 text-sm text-gray-500 mb-4">
-            <p>✓ Like posts to show support</p>
-            <p>✓ Comment to join conversations</p>
-            <p>✓ Share interesting content</p>
-            <p>✓ Follow societies you're interested in</p>
-          </div>
-          {onCancel && (
-            <Button onClick={onCancel} variant="outline">
-              Back to Dashboard
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-    )
-  }
-
   const { register, handleSubmit, formState: { errors, isSubmitting }, watch, setValue, reset } = useForm<PostFormData>({
     defaultValues: {
       type: 'text',
@@ -73,12 +45,7 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
     }
   })
 
-  // Load user's societies where they can post
-  React.useEffect(() => {
-    loadUserSocieties()
-  }, [])
-
-  const loadUserSocieties = async () => {
+  const loadUserSocieties = useCallback(async () => {
     if (loadingSocieties) return // Prevent double loading
     
     setLoadingSocieties(true)
@@ -109,6 +76,41 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
     } finally {
       setLoadingSocieties(false)
     }
+  }, [loadingSocieties])
+
+  // Load user's societies where they can post
+  React.useEffect(() => {
+    if (profile?.account_type === 'society') {
+      loadUserSocieties()
+    }
+  }, [profile?.account_type, loadUserSocieties])
+
+  // Check account type - only societies can create posts
+  if (profile?.account_type !== 'society') {
+    return (
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardContent className="py-12 text-center">
+          <AlertCircle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Post Creation Not Available
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Only society accounts can create posts. As a student, you can engage with posts by liking, commenting, and sharing to stay connected with campus communities.
+          </p>
+          <div className="space-y-2 text-sm text-gray-500 mb-4">
+            <p>✓ Like posts to show support</p>
+            <p>✓ Comment to join conversations</p>
+            <p>✓ Share interesting content</p>
+            <p>✓ Follow societies you're interested in</p>
+          </div>
+          {onCancel && (
+            <Button onClick={onCancel} variant="outline">
+              Back to Dashboard
+            </Button>
+          )}
+        </CardContent>
+      </Card>
+    )
   }
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
