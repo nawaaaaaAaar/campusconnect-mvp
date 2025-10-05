@@ -97,6 +97,7 @@ export function SignupForm({ accountType, onBack, onSuccess }: SignupFormProps) 
               onChange={(e) => setEmail(e.target.value)}
               required
               className="w-full"
+              autoComplete="email"
             />
           </div>
           <div className="space-y-2 relative">
@@ -108,6 +109,7 @@ export function SignupForm({ accountType, onBack, onSuccess }: SignupFormProps) 
               required
               className="w-full pr-12"
               minLength={6}
+              autoComplete="new-password"
             />
             <button
               type="button"
@@ -126,6 +128,7 @@ export function SignupForm({ accountType, onBack, onSuccess }: SignupFormProps) 
               required
               className="w-full pr-12"
               minLength={6}
+              autoComplete="new-password"
             />
             <button
               type="button"

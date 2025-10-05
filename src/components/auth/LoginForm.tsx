@@ -104,6 +104,7 @@ export function LoginForm({ accountType, onSwitchToOTP, onSwitchToSignup, onBack
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="w-full"
+                  autoComplete="email"
                 />
               </div>
               <div className="space-y-2 relative">
@@ -114,6 +115,7 @@ export function LoginForm({ accountType, onSwitchToOTP, onSwitchToSignup, onBack
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   className="w-full pr-12"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
