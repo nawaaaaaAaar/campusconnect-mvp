@@ -1,6 +1,3 @@
-{
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
   ],
   "installCommand": "pnpm install --no-frozen-lockfile",
   "buildCommand": "pnpm run build:prod",
@@ -45,6 +42,8 @@
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
         { "key": "X-Content-Type-Options", "value": "nosniff" }
       ]
+  ,
+  "buildCommand": "npm ci && npm run build:prod",
+  "installCommand": "npm ci",
+  "outputDirectory": "dist"
     }
-  ]
-}
