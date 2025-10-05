@@ -45,25 +45,6 @@ export function SearchAndDiscovery({ searchQuery, onSearchChange }: SearchAndDis
   const [selectedSociety, setSelectedSociety] = useState<Society | null>(null)
   const searchTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // PRD Section 5.2: Typeahead search ≤500ms
-  useEffect(() => {
-    if (searchTimerRef.current) {
-      clearTimeout(searchTimerRef.current)
-    }
-    
-    searchTimerRef.current = setTimeout(() => {
-      if (query.trim() || selectedCategory || selectedInstitute) {
-        performSearch()
-      } else {
-        loadFeaturedSocieties()
-      }
-    }, 300)
-    
-    return () => {
-      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
-    }
-  }, [query, selectedCategory, selectedInstitute, showVerifiedOnly, performSearch, loadFeaturedSocieties])
-
   const performSearch = useCallback(async () => {
     setLoading(true)
     try {
@@ -112,6 +93,25 @@ export function SearchAndDiscovery({ searchQuery, onSearchChange }: SearchAndDis
       setLoading(false)
     }
   }, [])
+
+  // PRD Section 5.2: Typeahead search ≤500ms
+  useEffect(() => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current)
+    }
+    
+    searchTimerRef.current = setTimeout(() => {
+      if (query.trim() || selectedCategory || selectedInstitute) {
+        performSearch()
+      } else {
+        loadFeaturedSocieties()
+      }
+    }, 300)
+    
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    }
+  }, [query, selectedCategory, selectedInstitute, showVerifiedOnly, performSearch, loadFeaturedSocieties])
 
   const handleSearchChange = (value: string) => {
     setQuery(value)

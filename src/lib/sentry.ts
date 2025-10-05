@@ -4,6 +4,7 @@
  */
 
 import * as Sentry from '@sentry/react'
+import { browserTracingIntegration } from '@sentry/react'
 
 // Initialize Sentry
 export function initSentry() {
@@ -18,17 +19,7 @@ export function initSentry() {
     dsn,
     environment: import.meta.env.MODE,
     integrations: [
-      Sentry.browserTracingIntegration({
-        // Set tracing origins to capture performance data
-        tracingOrigins: [
-          'localhost',
-          '127.0.0.1',
-          /^https:\/\/.*\.supabase\.co/,
-          /^https:\/\/.*\.supabase\.in/,
-          /^https:\/\/firebase\.googleapis\.com/,
-          /^https:\/\/fcm\.googleapis\.com/,
-        ],
-      }),
+      browserTracingIntegration(),
     ],
     // Performance monitoring
     tracesSampleRate: import.meta.env.MODE === 'production' ? 0.1 : 1.0,
@@ -104,10 +95,13 @@ export function reportError(error: Error, context?: Record<string, any>) {
 
 // Performance monitoring
 export function startTransaction(name: string, op: string = 'navigation') {
-  return Sentry.startSpan({
-    name,
-    op,
-  })
+  return Sentry.startSpan(
+    {
+      name,
+      op,
+    },
+    () => {}
+  )
 }
 
 // Breadcrumb tracking
