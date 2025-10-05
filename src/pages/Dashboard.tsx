@@ -5,12 +5,12 @@ export function Dashboard() {
     // Register service worker for push notifications
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       const params = new URLSearchParams()
-      const apiKey = (import.meta.env.VITE_FIREBASE_API_KEY as string) || (import.meta as any).env.NEXT_PUBLIC_FIREBASE_API_KEY
-      const authDomain = (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string) || (import.meta as any).env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
-      const projectId = (import.meta.env.VITE_FIREBASE_PROJECT_ID as string) || (import.meta as any).env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-      const messagingSenderId = (import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string) || (import.meta as any).env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
-      const appId = (import.meta.env.VITE_FIREBASE_APP_ID as string) || (import.meta as any).env.NEXT_PUBLIC_FIREBASE_APP_ID
-      const storageBucket = (import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string) || (import.meta as any).env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+      const apiKey = import.meta.env.VITE_FIREBASE_API_KEY as string
+      const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string
+      const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID as string
+      const messagingSenderId = import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID as string
+      const appId = import.meta.env.VITE_FIREBASE_APP_ID as string
+      const storageBucket = import.meta.env.VITE_FIREBASE_STORAGE_BUCKET as string
 
       if (apiKey) params.set('apiKey', apiKey)
       if (authDomain) params.set('authDomain', authDomain)
