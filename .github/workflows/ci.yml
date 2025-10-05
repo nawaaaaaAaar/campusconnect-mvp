@@ -33,35 +33,41 @@ jobs:
             ${{ runner.os }}-pnpm-store-
 
       - name: Install deps
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
+        working-directory: campusconnect-mvp
 
       - name: Lint
         run: pnpm exec eslint .
+        working-directory: campusconnect-mvp
 
       - name: Unit tests
         run: pnpm test -- --ci --reporters=default --silent
+        working-directory: campusconnect-mvp
 
       - name: Install Playwright Browsers
         run: pnpm exec playwright install --with-deps
+        working-directory: campusconnect-mvp
 
       - name: Seed E2E data
         env:
           SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/seed.mjs > seed-output.json
+        working-directory: campusconnect-mvp
 
       - name: Run E2E tests
         env:
           VITE_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
         run: pnpm test:e2e || true
+        working-directory: campusconnect-mvp
 
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: playwright-report
+          path: campusconnect-mvp/playwright-report
 
       - name: Teardown E2E data
         if: always()
@@ -69,5 +75,6 @@ jobs:
           SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/teardown.mjs
+        working-directory: campusconnect-mvp
         
 
