@@ -2,10 +2,10 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Authentication Flow', () => {
   test('should display login form after selecting account type', async ({ page }) => {
-    await page.goto('/auth');
+    await page.goto('/auth', { waitUntil: 'networkidle' });
 
     // Select account type first (Student)
-    await page.getByText('Student').click();
+    await page.getByRole('heading', { name: 'Student' }).click();
 
     // Check if login form elements are present
     await expect(page.getByText('Welcome Back')).toBeVisible();
@@ -16,10 +16,10 @@ test.describe('Authentication Flow', () => {
   });
 
   test('should display signup form when toggled', async ({ page }) => {
-    await page.goto('/auth');
+    await page.goto('/auth', { waitUntil: 'networkidle' });
 
     // Select account type first (Student)
-    await page.getByText('Student').click();
+    await page.getByRole('heading', { name: 'Student' }).click();
 
     // Click on signup link
     await page.getByRole('button', { name: "Don't have an account? Sign up" }).click();
@@ -32,10 +32,10 @@ test.describe('Authentication Flow', () => {
   });
 
   test('should allow navigating to login after successful signup submit', async ({ page }) => {
-    await page.goto('/auth');
+    await page.goto('/auth', { waitUntil: 'networkidle' });
 
     // Select account type first (Student)
-    await page.getByText('Student').click();
+    await page.getByRole('heading', { name: 'Student' }).click();
 
     // Navigate to signup
     await page.getByRole('button', { name: "Don't have an account? Sign up" }).click();
