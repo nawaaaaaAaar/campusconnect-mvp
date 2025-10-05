@@ -1,3 +1,9 @@
+import React, { useEffect } from 'react'
+
+export function Dashboard() {
+  useEffect(() => {
+    // Register service worker for push notifications
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
       const params = new URLSearchParams()
       const apiKey = (import.meta.env.VITE_FIREBASE_API_KEY as string) || (import.meta as any).env.NEXT_PUBLIC_FIREBASE_API_KEY
       const authDomain = (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string) || (import.meta as any).env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
@@ -14,5 +20,14 @@
       if (storageBucket) params.set('storageBucket', storageBucket)
 
       const swUrl = `/firebase-messaging-sw.js${params.toString() ? `?${params.toString()}` : ''}`
-      navigator.serviceWorker.register(swUrl)
+      navigator.serviceWorker.register(swUrl).catch(() => {})
+    }
+  }, [])
 
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-semibold">Dashboard</h1>
+      <p className="text-gray-600 mt-2">Welcome to CampusConnect.</p>
+    </div>
+  )
+}
