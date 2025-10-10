@@ -55,7 +55,7 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
       console.log('Profile response:', response)
       
       // For society accounts, they can post as their own society
-      if (profile?.account_type === 'society' && response?.data?.society_name) {
+      if (profile?.account_type === 'society') {
         // If this is a society account, try to find their society
         const societies = await campusAPI.getSocieties({ limit: 1000 })
         const ownSociety = societies.data?.find((s: any) => s.owner_user_id === profile.id)

@@ -72,15 +72,11 @@ export function ProfileSetup() {
     setLoading(true)
     try {
       const profileData = {
-        name: name.trim(),
+        name: accountType === 'society' ? societyName.trim() : name.trim(),
         institute: institute.trim(),
         course: accountType === 'student' ? (course || undefined) : undefined,
-        bio: bio.trim() || undefined,
-        account_type: accountType,
-        // Society-specific fields
-        society_name: accountType === 'society' ? societyName.trim() : undefined,
-        society_category: accountType === 'society' ? (societyCategory || undefined) : undefined,
-        society_description: accountType === 'society' ? (societyDescription.trim() || undefined) : undefined
+        bio: accountType === 'society' ? societyDescription.trim() || undefined : bio.trim() || undefined,
+        account_type: accountType
       }
       
       await createOrUpdateProfile(profileData)

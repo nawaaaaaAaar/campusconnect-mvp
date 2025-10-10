@@ -9,8 +9,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  -- Only proceed if this is a society account with a society_name
-  IF NEW.account_type = 'society' AND NEW.society_name IS NOT NULL THEN
+  -- Only proceed if this is a society account with a name
+  IF NEW.account_type = 'society' AND NEW.name IS NOT NULL THEN
     -- Check if society already exists for this profile
     IF NOT EXISTS (SELECT 1 FROM societies WHERE owner_user_id = NEW.id) THEN
       -- Create the society
@@ -26,9 +26,9 @@ BEGIN
       )
       VALUES (
         NEW.id,
-        NEW.society_name,
-        COALESCE(NEW.society_description, 'A campus society'),
-        COALESCE(NEW.society_category, 'Other'),
+        NEW.name,
+        COALESCE(NEW.bio, 'A campus society'),
+        'Other',
         NEW.institute,
         false,
         NOW(),
@@ -66,7 +66,7 @@ DROP TRIGGER IF EXISTS on_society_profile_created ON profiles;
 CREATE TRIGGER on_society_profile_created
   AFTER INSERT OR UPDATE ON profiles
   FOR EACH ROW
-  WHEN (NEW.account_type = 'society' AND NEW.society_name IS NOT NULL)
+  WHEN (NEW.account_type = 'society' AND NEW.name IS NOT NULL)
   EXECUTE FUNCTION public.create_society_from_profile();
 
 -- Backfill: Create societies for existing society accounts that don't have one
@@ -80,7 +80,7 @@ BEGIN
     FROM profiles p
     LEFT JOIN societies s ON s.owner_user_id = p.id
     WHERE p.account_type = 'society' 
-    AND p.society_name IS NOT NULL
+    AND p.name IS NOT NULL
     AND s.id IS NULL
   LOOP
     -- Create society
@@ -96,9 +96,9 @@ BEGIN
     )
     VALUES (
       profile_record.id,
-      profile_record.society_name,
-      COALESCE(profile_record.society_description, 'A campus society'),
-      COALESCE(profile_record.society_category, 'Other'),
+      profile_record.name,
+      COALESCE(profile_record.bio, 'A campus society'),
+      'Other',
       profile_record.institute,
       false,
       NOW(),
