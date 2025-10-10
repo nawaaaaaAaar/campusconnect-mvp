@@ -316,11 +316,18 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
                 <option value="">
                   {loadingSocieties ? 'Loading societies...' : societies.length === 0 ? 'No societies available' : 'Select a society...'}
                 </option>
-                {societies.map((membership) => (
-                  <option key={membership.society_id} value={membership.society_id}>
-                    {membership.societies?.name || 'Unknown Society'} ({membership.role || 'member'})
-                  </option>
-                ))}
+                {societies.map((item) => {
+                  // Handle both direct society objects (for society accounts) and membership objects (for students)
+                  const societyId = item.society_id || item.id;
+                  const societyName = item.societies?.name || item.name || 'Unknown Society';
+                  const role = item.role || 'owner';
+                  
+                  return (
+                    <option key={societyId} value={societyId}>
+                      {societyName} ({role})
+                    </option>
+                  );
+                })}
               </select>
               {loadingSocieties && (
                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
