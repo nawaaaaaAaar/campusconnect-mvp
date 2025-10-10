@@ -5,8 +5,8 @@
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Enable Row Level Security
-ALTER DATABASE postgres SET "app.jwt_secret" TO 'your-jwt-secret-here';
+-- Note: Row Level Security is enabled below on each table
+-- Supabase manages JWT secrets automatically, no need to set them manually
 
 -- =============================================================================
 -- TABLES

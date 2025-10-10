@@ -3,6 +3,9 @@
 ## Problem
 Getting "Database error saving new user" when trying to sign up.
 
+## ⚠️ Note
+The schema file has been updated to remove a superuser-only command. Make sure you're using the latest version from GitHub.
+
 ## Solution
 
 ### Option 1: Using Supabase Dashboard (Easiest)
