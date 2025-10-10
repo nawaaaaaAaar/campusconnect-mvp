@@ -21,7 +21,12 @@ Deno.serve(async (req) => {
 
         const url = new URL(req.url);
         const method = req.method;
-        const pathSegments = url.pathname.split('/').filter(Boolean);
+        let pathSegments = url.pathname.split('/').filter(Boolean);
+        
+        // Remove function name from path segments (e.g., 'posts-api')
+        if (pathSegments[0] === 'posts-api') {
+            pathSegments = pathSegments.slice(1);
+        }
         
         console.log('Posts API - Method:', method, 'Path:', url.pathname, 'Segments:', pathSegments);
         
