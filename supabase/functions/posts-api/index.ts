@@ -23,6 +23,8 @@ Deno.serve(async (req) => {
         const method = req.method;
         const pathSegments = url.pathname.split('/').filter(Boolean);
         
+        console.log('Posts API - Method:', method, 'Path:', url.pathname, 'Segments:', pathSegments);
+        
         // Get user from auth header
         const authHeader = req.headers.get('authorization');
         let userId = null;
@@ -439,8 +441,12 @@ Deno.serve(async (req) => {
         }
         
         // Route not found
+        console.error('Route not found - Method:', method, 'PathSegments:', pathSegments, 'Length:', pathSegments.length);
         return new Response(JSON.stringify({
-            error: { code: 'ROUTE_NOT_FOUND', message: 'API route not found' }
+            error: { 
+                code: 'ROUTE_NOT_FOUND', 
+                message: `API route not found. Method: ${method}, Path: ${url.pathname}, Segments: ${pathSegments.join('/')}` 
+            }
         }), {
             status: 404,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
