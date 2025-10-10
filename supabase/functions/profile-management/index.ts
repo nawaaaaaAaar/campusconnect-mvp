@@ -1,55 +1,41 @@
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE, PATCH',
-  'Access-Control-Max-Age': '86400',
-  'Access-Control-Allow-Credentials': 'false'
-};
+import { getCorsHeaders, handleCors } from '../_shared/cors.ts'
+import { checkRateLimit, createRateLimitResponse, getRateLimitIdentifier, rateLimitConfigs } from '../_shared/ratelimit.ts'
+import { requireAuth } from '../_shared/auth.ts'
+import { createErrorResponse, ErrorCode, handleDatabaseError } from '../_shared/errors.ts'
+import { validateText, validatePagination } from '../_shared/validation.ts'
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 200, headers: corsHeaders });
-  }
+  const origin = req.headers.get('origin')
+  const corsHeaders = getCorsHeaders(origin)
+  
+  // Handle CORS preflight
+  const corsResponse = handleCors(req)
+  if (corsResponse) return corsResponse
 
   try {
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader) {
-      return new Response(JSON.stringify({ error: { code: 'UNAUTHORIZED', message: 'Missing authorization header' } }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
-
-    const jwt = authHeader.replace('Bearer ', '');
-    
     // Get environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
     if (!supabaseUrl || !serviceRoleKey) {
-      return new Response(JSON.stringify({ error: { code: 'CONFIG_ERROR', message: 'Supabase configuration missing' } }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return createErrorResponse(
+        ErrorCode.CONFIG_ERROR,
+        'Supabase configuration missing',
+        corsHeaders
+      )
     }
 
-    // Verify the JWT and get user using REST API
-    const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        'Authorization': authHeader,
-        'apikey': serviceRoleKey
-      }
-    });
+    // Authenticate user
+    const user = await requireAuth(req, supabaseUrl, serviceRoleKey, corsHeaders)
+    const userId = user.id
     
-    if (!userResponse.ok) {
-      return new Response(JSON.stringify({ error: { code: 'INVALID_JWT', message: 'Invalid or expired token' } }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    // Apply rate limiting
+    const rateLimitKey = getRateLimitIdentifier(req, userId)
+    const rateLimit = checkRateLimit(rateLimitKey, rateLimitConfigs.api)
+    
+    if (!rateLimit.allowed) {
+      return createRateLimitResponse(rateLimit, corsHeaders)
     }
-    
-    const userData = await userResponse.json();
-    const userId = userData.id;
 
     if (req.method === 'GET') {
       try {
@@ -175,6 +161,37 @@ Deno.serve(async (req) => {
       try {
         const requestData = await req.json();
         const { name, avatar_url, institute, course } = requestData;
+
+        // Validate input
+        if (name) {
+          const nameValidation = validateText(name, { 
+            minLength: 2, 
+            maxLength: 100, 
+            fieldName: 'Name' 
+          })
+          if (!nameValidation.valid) {
+            return createErrorResponse(
+              ErrorCode.VALIDATION_ERROR,
+              nameValidation.error || 'Invalid name',
+              corsHeaders
+            )
+          }
+        }
+
+        if (institute) {
+          const instituteValidation = validateText(institute, { 
+            minLength: 2, 
+            maxLength: 200, 
+            fieldName: 'Institute' 
+          })
+          if (!instituteValidation.valid) {
+            return createErrorResponse(
+              ErrorCode.VALIDATION_ERROR,
+              instituteValidation.error || 'Invalid institute name',
+              corsHeaders
+            )
+          }
+        }
 
         // Update profile
         const updateResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {

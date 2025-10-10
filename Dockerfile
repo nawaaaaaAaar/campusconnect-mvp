@@ -1,4 +1,4 @@
-# Multi-stage build for CampusConnect
+# Multi-stage build for CampusConnect (Vite + React)
 FROM node:18-alpine AS base
 
 # Install dependencies only when needed
@@ -6,9 +6,9 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies
-COPY package.json pnpm-lock.yaml* ./
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+# Install dependencies (use npm, not pnpm)
+COPY package.json package-lock.json* ./
+RUN npm ci --only=production
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -16,27 +16,41 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build the application
-RUN npm run build
+# Build arguments for environment variables
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+ARG VITE_FIREBASE_API_KEY
+ARG VITE_FIREBASE_AUTH_DOMAIN
+ARG VITE_FIREBASE_PROJECT_ID
+ARG VITE_FIREBASE_MESSAGING_SENDER_ID
+ARG VITE_FIREBASE_APP_ID
+ARG VITE_FIREBASE_STORAGE_BUCKET
+ARG VITE_SENTRY_DSN
+ARG VITE_APP_VERSION
+ARG VITE_APP_NAME
 
-# Production image, copy all the files and run the app
-FROM base AS runner
-WORKDIR /app
+# Build the application with production mode
+RUN npm run build:prod
 
-ENV NODE_ENV production
+# Production image with Nginx to serve static files
+FROM nginx:alpine AS runner
+WORKDIR /usr/share/nginx/html
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built application
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/public ./public
+# Copy built application from builder
+COPY --from=builder /app/dist .
 
-USER nextjs
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1
 
-EXPOSE 3000
+# Create health check endpoint
+RUN echo '{"status":"healthy","service":"campusconnect","timestamp":"'$(date -Iseconds)'"}' > /usr/share/nginx/html/health
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+# Expose port
+EXPOSE 80
 
-CMD ["npm", "run", "preview"]
+# Run nginx
+CMD ["nginx", "-g", "daemon off;"]

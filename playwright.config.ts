@@ -37,8 +37,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    // Use vite directly to avoid shell-specific scripts
-    command: 'VITE_SUPABASE_URL=https://dummy.supabase.co VITE_SUPABASE_ANON_KEY=dummy VITE_FIREBASE_API_KEY=dummy VITE_FIREBASE_AUTH_DOMAIN=dummy.firebaseapp.com VITE_FIREBASE_PROJECT_ID=dummy VITE_FIREBASE_MESSAGING_SENDER_ID=123 VITE_FIREBASE_APP_ID=1:123:web:abc VITE_FIREBASE_STORAGE_BUCKET=dummy.appspot.com npx vite',
+    // Use vite with cross-env for Windows
+    command: 'npx cross-env VITE_SUPABASE_URL=https://dummy.supabase.co VITE_SUPABASE_ANON_KEY=dummy VITE_FIREBASE_API_KEY=dummy VITE_FIREBASE_AUTH_DOMAIN=dummy.firebaseapp.com VITE_FIREBASE_PROJECT_ID=dummy VITE_FIREBASE_MESSAGING_SENDER_ID=123 VITE_FIREBASE_APP_ID=1:123:web:abc VITE_FIREBASE_STORAGE_BUCKET=dummy.appspot.com vite',
     url: 'http://localhost:5173',
     reuseExistingServer: !process.env.CI,
   },
