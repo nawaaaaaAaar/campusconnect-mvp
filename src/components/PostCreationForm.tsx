@@ -304,46 +304,57 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
       
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          {/* Society Selection */}
-          <div>
-            <Label htmlFor="society_id">Post to Society *</Label>
-            <div className="mt-1 relative">
-              <select
-                {...register('society_id', { required: 'Please select a society' })}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
-                disabled={loadingSocieties}
-              >
-                <option value="">
-                  {loadingSocieties ? 'Loading societies...' : societies.length === 0 ? 'No societies available' : 'Select a society...'}
-                </option>
-                {societies.map((item) => {
-                  // Handle both direct society objects (for society accounts) and membership objects (for students)
-                  const societyId = item.society_id || item.id;
-                  const societyName = item.societies?.name || item.name || 'Unknown Society';
-                  const role = item.role || 'owner';
-                  
-                  return (
-                    <option key={societyId} value={societyId}>
-                      {societyName} ({role})
-                    </option>
-                  );
-                })}
-              </select>
-              {loadingSocieties && (
-                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                </div>
+          {/* Society Selection - Only show for student accounts with multiple societies */}
+          {profile?.account_type !== 'society' && (
+            <div>
+              <Label htmlFor="society_id">Post to Society *</Label>
+              <div className="mt-1 relative">
+                <select
+                  {...register('society_id', { required: 'Please select a society' })}
+                  className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-50 disabled:text-gray-500"
+                  disabled={loadingSocieties}
+                >
+                  <option value="">
+                    {loadingSocieties ? 'Loading societies...' : societies.length === 0 ? 'No societies available' : 'Select a society...'}
+                  </option>
+                  {societies.map((item) => {
+                    // Handle both direct society objects (for society accounts) and membership objects (for students)
+                    const societyId = item.society_id || item.id;
+                    const societyName = item.societies?.name || item.name || 'Unknown Society';
+                    const role = item.role || 'owner';
+                    
+                    return (
+                      <option key={societyId} value={societyId}>
+                        {societyName} ({role})
+                      </option>
+                    );
+                  })}
+                </select>
+                {loadingSocieties && (
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                  </div>
+                )}
+              </div>
+              {errors.society_id && (
+                <p className="mt-1 text-sm text-red-600">{errors.society_id.message}</p>
+              )}
+              {!loadingSocieties && societies.length === 0 && (
+                <p className="mt-1 text-sm text-orange-600">
+                  You need editor, admin, or owner permissions in a society to create posts.
+                </p>
               )}
             </div>
-            {errors.society_id && (
-              <p className="mt-1 text-sm text-red-600">{errors.society_id.message}</p>
-            )}
-            {!loadingSocieties && societies.length === 0 && (
-              <p className="mt-1 text-sm text-orange-600">
-                You need editor, admin, or owner permissions in a society to create posts.
+          )}
+          
+          {/* For society accounts, show posting as their society */}
+          {profile?.account_type === 'society' && societies.length > 0 && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800">
+                Posting as <span className="font-semibold">{societies[0]?.name || profile.name}</span>
               </p>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Post Content */}
           <div>

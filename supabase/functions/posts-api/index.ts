@@ -105,9 +105,9 @@ Deno.serve(async (req) => {
                 });
             }
             
-            // Check if user is a member of the society
-            const memberCheck = await fetch(
-                `${supabaseUrl}/rest/v1/society_members?user_id=eq.${userId}&society_id=eq.${society_id}`,
+            // Check if user is the owner of the society OR a member
+            const societyCheck = await fetch(
+                `${supabaseUrl}/rest/v1/societies?id=eq.${society_id}&select=owner_user_id`,
                 {
                     headers: {
                         'Authorization': `Bearer ${serviceRoleKey}`,
@@ -116,16 +116,43 @@ Deno.serve(async (req) => {
                 }
             );
             
-            if (memberCheck.ok) {
-                const members = await memberCheck.json();
-                if (members.length === 0) {
-                    return new Response(JSON.stringify({
-                        error: { code: 'FORBIDDEN', message: 'User is not a member of this society' }
-                    }), {
-                        status: 403,
-                        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-                    });
+            let isAuthorized = false;
+            
+            if (societyCheck.ok) {
+                const societies = await societyCheck.json();
+                if (societies.length > 0 && societies[0].owner_user_id === userId) {
+                    // User owns the society - authorized!
+                    isAuthorized = true;
                 }
+            }
+            
+            // If not owner, check if they're a member
+            if (!isAuthorized) {
+                const memberCheck = await fetch(
+                    `${supabaseUrl}/rest/v1/society_members?user_id=eq.${userId}&society_id=eq.${society_id}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${serviceRoleKey}`,
+                            'apikey': serviceRoleKey
+                        }
+                    }
+                );
+                
+                if (memberCheck.ok) {
+                    const members = await memberCheck.json();
+                    if (members.length > 0) {
+                        isAuthorized = true;
+                    }
+                }
+            }
+            
+            if (!isAuthorized) {
+                return new Response(JSON.stringify({
+                    error: { code: 'FORBIDDEN', message: 'You must be the owner or a member of this society to post' }
+                }), {
+                    status: 403,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
             }
             
             // Create the post
