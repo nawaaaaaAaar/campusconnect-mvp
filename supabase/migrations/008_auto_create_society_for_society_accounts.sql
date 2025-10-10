@@ -33,8 +33,7 @@ BEGIN
         false,
         NOW(),
         NOW()
-      )
-
+      );
       
       -- Make the profile creator an admin member of their society
       INSERT INTO society_members (
