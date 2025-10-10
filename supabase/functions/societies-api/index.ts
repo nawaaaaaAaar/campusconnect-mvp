@@ -50,7 +50,8 @@ Deno.serve(async (req) => {
             const verified = url.searchParams.get('verified');
             const search = url.searchParams.get('search');
             
-            let query = `${supabaseUrl}/rest/v1/societies?select=*`;
+            // Explicitly select columns to avoid issues with schema changes
+            let query = `${supabaseUrl}/rest/v1/societies?select=id,name,description,category,institute_id,owner_user_id,verified,logo_url,cover_image_url,follower_count,member_count,post_count,created_at,updated_at`;
             
             // Add filters
             const filters = [];
@@ -75,6 +76,7 @@ Deno.serve(async (req) => {
             
             if (!response.ok) {
                 const errorText = await response.text();
+                console.error('Societies fetch error:', errorText);
                 throw new Error(`Failed to fetch societies: ${errorText}`);
             }
             
