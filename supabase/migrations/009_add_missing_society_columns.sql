@@ -14,6 +14,8 @@ BEGIN
     ALTER TABLE societies ADD COLUMN IF NOT EXISTS member_count INTEGER DEFAULT 0;
     ALTER TABLE societies ADD COLUMN IF NOT EXISTS post_count INTEGER DEFAULT 0;
     ALTER TABLE societies ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}';
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
     
     RAISE NOTICE '✅ All societies table columns added successfully!';
 END $$;

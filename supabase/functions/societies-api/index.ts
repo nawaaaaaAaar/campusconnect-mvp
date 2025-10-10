@@ -50,8 +50,8 @@ Deno.serve(async (req) => {
             const verified = url.searchParams.get('verified');
             const search = url.searchParams.get('search');
             
-            // Select only core columns that definitely exist
-            let query = `${supabaseUrl}/rest/v1/societies?select=id,name,category,owner_user_id,institute_id,created_at,updated_at`;
+            // Select only the most basic columns that must exist
+            let query = `${supabaseUrl}/rest/v1/societies?select=id,name,category,owner_user_id`;
             
             // Add filters
             const filters = [];
