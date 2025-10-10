@@ -54,8 +54,23 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
       const response = await campusAPI.getProfile()
       console.log('Profile response:', response)
       
-      if (response?.data?.society_memberships) {
-        // Allow all society members to post, regardless of role
+      // For society accounts, they can post as their own society
+      if (profile?.account_type === 'society' && response?.data?.society_name) {
+        // If this is a society account, try to find their society
+        const societies = await campusAPI.getSocieties({ limit: 1000 })
+        const ownSociety = societies.data?.find((s: any) => s.owner_user_id === profile.id)
+        
+        if (ownSociety) {
+          setSocieties([ownSociety])
+          setValue('society_id', ownSociety.id)
+          console.log('Found own society:', ownSociety)
+        } else {
+          console.log('Society account but no society found - will be created soon')
+          toast.info('Setting up your society... Please refresh in a moment.')
+          setSocieties([])
+        }
+      } else if (response?.data?.society_memberships) {
+        // For student accounts, show societies they're members of
         const postingSocieties = response.data.society_memberships
         
         console.log('Posting societies:', postingSocieties)
@@ -67,7 +82,6 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
       } else {
         console.log('No society memberships found')
         setSocieties([])
-        toast.error('No society memberships found. You need to be a member of a society to create posts.')
       }
     } catch (error: any) {
       console.error('Failed to load societies:', error)
@@ -76,7 +90,7 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
     } finally {
       setLoadingSocieties(false)
     }
-  }, [loadingSocieties])
+  }, [loadingSocieties, profile, setValue])
 
   // Load user's societies where they can post
   React.useEffect(() => {
