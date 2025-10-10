@@ -1,14 +1,18 @@
-# 🚨 Quick Fix: Database Schema Setup
+# 🚨 Quick Fix: Database Schema Setup (Updated)
 
 ## Problem
-Getting "Database error saving new user" when trying to sign up.
+Getting database errors when trying to sign up or use the app. Missing columns like `is_published`, `token`, `parent_comment_id`, etc.
 
-## ⚠️ Note
-The schema file has been updated to remove a superuser-only command. Make sure you're using the latest version from GitHub.
+## Root Cause
+Your database has some tables but is missing many critical columns that were added in later schema versions.
 
-## Solution
+## ✅ Solution: 2-Step Migration Process
 
-### Option 1: Using Supabase Dashboard (Easiest)
+### Step 1: Run the Comprehensive Schema Fix
+
+This migration adds ALL missing columns and tables to your existing database.
+
+**Using Supabase Dashboard (Recommended):**
 
 1. **Go to Supabase Dashboard:**
    - Visit: https://supabase.com/dashboard
@@ -18,95 +22,134 @@ The schema file has been updated to remove a superuser-only command. Make sure y
    - Click "SQL Editor" in left sidebar
    - Click "New Query"
 
-3. **Copy and run the schema:**
-   - Open `supabase/migrations/001_initial_schema.sql`
-   - Copy the entire contents
+3. **Copy and run the fix:**
+   - Open `supabase/migrations/006_complete_schema_fix.sql`
+   - Copy the entire contents (it should already be in your clipboard!)
    - Paste into SQL Editor
    - Click "Run" (or press Ctrl+Enter)
 
-4. **Verify tables created:**
-   - Go to "Table Editor" in sidebar
-   - You should see: profiles, societies, posts, etc.
+4. **Verify success:**
+   - You should see: `🎉 COMPLETE! All tables and columns are now ready for migration 002`
 
-### Option 2: Using Supabase CLI
+### Step 2: Run the Full Schema Migration
 
-```bash
-# Install Supabase CLI if not already installed
-npm install -g supabase
+After Step 1 succeeds, run the complete schema to add indexes, functions, and RLS policies.
 
-# Link to your project
-supabase link --project-ref egdavxjkyxvawgguqmvx
+**Using Supabase Dashboard:**
 
-# Run migrations
-supabase db push
-```
+1. **In the same SQL Editor:**
+   - Click "New Query"
 
-### Option 3: Using psql (Advanced)
+2. **Copy and run migration 002:**
+   - Open `supabase/migrations/002_safe_migration.sql`
+   - Copy the entire contents
+   - Paste into SQL Editor
+   - Click "Run"
 
-```bash
-# Get your database connection string from Supabase Dashboard
-# Settings > Database > Connection string (Direct connection)
+3. **Verify success:**
+   - You should see: `✅ Database setup complete!`
 
-psql "postgresql://postgres:[PASSWORD]@db.egdavxjkyxvawgguqmvx.supabase.co:5432/postgres" \
-  -f supabase/migrations/001_initial_schema.sql
-```
-
-## After Running Migration
+## After Running Both Migrations
 
 1. **Verify the setup:**
    - Go to Supabase Dashboard > Table Editor
-   - Check that these tables exist:
-     - ✅ profiles
-     - ✅ societies
-     - ✅ posts
+   - Check that these tables exist with all columns:
+     - ✅ profiles (with bio, interests, society_name, etc.)
+     - ✅ societies (with verified, verification_date, etc.)
+     - ✅ posts (with is_published, title, tags, etc.)
+     - ✅ post_comments (with parent_comment_id)
+     - ✅ society_invitations (with token, status, expires_at)
      - ✅ society_members
      - ✅ society_followers
      - ✅ notifications
+     - ✅ institutes
+     - ✅ push_devices
+     - ✅ admin_users
+     - ✅ audit_logs
+     - ✅ reports
+     - ✅ notification_preferences
 
 2. **Test signup again:**
    - Try creating a new account
    - Should work without errors now
 
-## Still Having Issues?
+## Alternative: Using Supabase CLI
 
-If you get permission errors:
+If you prefer the command line:
 
-1. **Check RLS is enabled but has policies:**
-   - The schema includes policies for authenticated users
+```powershell
+# Set your access token
+$env:SUPABASE_ACCESS_TOKEN="your-token-here"
 
-2. **Verify the trigger exists:**
-   ```sql
-   -- Check in SQL Editor
-   SELECT trigger_name 
-   FROM information_schema.triggers 
-   WHERE event_object_table = 'users';
-   ```
-   - Should show: `on_auth_user_created`
+# Run migration 006 first
+npx supabase db execute --file supabase/migrations/006_complete_schema_fix.sql
 
-3. **Create admin user (optional):**
-   ```sql
-   -- After you create your first account, make yourself admin
-   INSERT INTO admin_users (user_id, role, is_active)
-   VALUES ('your-user-id-here', 'super_admin', true);
-   ```
+# Then run migration 002
+npx supabase db execute --file supabase/migrations/002_safe_migration.sql
+```
 
 ## Quick Test
 
-After migration, try this in SQL Editor:
+After both migrations, verify in SQL Editor:
 
 ```sql
--- Check if profiles table exists
-SELECT table_name 
-FROM information_schema.tables 
-WHERE table_schema = 'public' 
-AND table_name = 'profiles';
+-- Check if all key columns exist
+SELECT column_name 
+FROM information_schema.columns 
+WHERE table_name = 'posts' 
+AND column_name IN ('is_published', 'title', 'tags', 'published_at');
 
--- Should return: profiles
+-- Should return all 4 columns
+
+SELECT column_name 
+FROM information_schema.columns 
+WHERE table_name = 'society_invitations' 
+AND column_name IN ('token', 'status', 'expires_at');
+
+-- Should return all 3 columns
 ```
+
+## Migration File Order
+
+**DO NOT run these in order:**
+- ~~001_initial_schema.sql~~ (skip this, it conflicts with existing data)
+- ~~003_add_missing_columns.sql~~ (superseded by 006)
+- ~~004_fix_post_comments.sql~~ (superseded by 006)
+- ~~005_fix_society_invitations.sql~~ (superseded by 006)
+
+**DO run these in this exact order:**
+1. **006_complete_schema_fix.sql** ← Start here!
+2. **002_safe_migration.sql** ← Then this!
+
+## Still Having Issues?
+
+If you encounter errors:
+
+1. **Check which migration failed:**
+   - Look at the error message for the column/table name
+   - Note which line number in the migration
+
+2. **Verify current schema:**
+   ```sql
+   -- List all tables
+   SELECT table_name 
+   FROM information_schema.tables 
+   WHERE table_schema = 'public';
+   
+   -- List all columns in a specific table
+   SELECT column_name, data_type 
+   FROM information_schema.columns 
+   WHERE table_name = 'your_table_name';
+   ```
+
+3. **Contact support with:**
+   - The exact error message
+   - Which migration file you were running
+   - The line number that failed
 
 ---
 
 **Need Help?**
 - Supabase Docs: https://supabase.com/docs/guides/database
-- Your migration file: `supabase/migrations/001_initial_schema.sql`
-
+- Migration files: `supabase/migrations/`
+- Full guide: `run-migrations.md`
