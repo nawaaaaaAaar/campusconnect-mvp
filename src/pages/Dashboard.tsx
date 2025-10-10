@@ -157,7 +157,7 @@ export function Dashboard() {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <PostCreationForm
-              onClose={() => setShowPostCreation(false)}
+              onCancel={() => setShowPostCreation(false)}
               onSuccess={() => {
                 setShowPostCreation(false)
                 setActiveTab('home')
