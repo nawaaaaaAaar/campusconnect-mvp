@@ -1,28 +1,20 @@
--- Add missing columns to societies table that are needed by the API
+-- Add ALL missing columns to societies table
 
 DO $$
 BEGIN
-    -- Add description column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_name='societies' AND column_name='description') THEN
-        ALTER TABLE societies ADD COLUMN description TEXT;
-        RAISE NOTICE 'Added description column to societies table';
-    END IF;
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS description TEXT;
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS contact_email TEXT;
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS website TEXT;
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS logo_url TEXT;
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS verification_date TIMESTAMPTZ;
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS follower_count INTEGER DEFAULT 0;
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS member_count INTEGER DEFAULT 0;
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS post_count INTEGER DEFAULT 0;
+    ALTER TABLE societies ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}';
     
-    -- Add contact_email column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_name='societies' AND column_name='contact_email') THEN
-        ALTER TABLE societies ADD COLUMN contact_email TEXT;
-        RAISE NOTICE 'Added contact_email column to societies table';
-    END IF;
-    
-    -- Add website column if it doesn't exist
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                   WHERE table_name='societies' AND column_name='website') THEN
-        ALTER TABLE societies ADD COLUMN website TEXT;
-        RAISE NOTICE 'Added website column to societies table';
-    END IF;
-    
-    RAISE NOTICE '✅ Societies table columns updated successfully!';
+    RAISE NOTICE '✅ All societies table columns added successfully!';
 END $$;
 
