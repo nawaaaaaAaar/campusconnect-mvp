@@ -11,7 +11,11 @@ interface TelemetryEvent {
   device: string
   app_version: string
   latency_ms?: number
+  post_count?: number
+  feed_type?: string
+  reason?: string
   metadata?: Record<string, any>
+  [key: string]: any // Allow additional dynamic properties
 }
 
 interface PerformanceMetric {
