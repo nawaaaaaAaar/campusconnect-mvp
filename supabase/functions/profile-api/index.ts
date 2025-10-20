@@ -21,7 +21,14 @@ Deno.serve(async (req) => {
 
         const url = new URL(req.url);
         const method = req.method;
-        const pathSegments = url.pathname.split('/').filter(Boolean);
+        let pathSegments = url.pathname.split('/').filter(Boolean);
+        
+        // Remove 'functions', 'v1', and function name from path segments
+        // Example: /functions/v1/profile-api/following -> ['following']
+        const functionNameIndex = pathSegments.indexOf('profile-api');
+        if (functionNameIndex !== -1) {
+            pathSegments = pathSegments.slice(functionNameIndex + 1);
+        }
         
         // Get user from auth header
         const authHeader = req.headers.get('authorization');

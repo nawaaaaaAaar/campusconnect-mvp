@@ -23,9 +23,11 @@ Deno.serve(async (req) => {
         const method = req.method;
         let pathSegments = url.pathname.split('/').filter(Boolean);
         
-        // Remove function name from path segments (e.g., 'posts-api')
-        if (pathSegments[0] === 'posts-api') {
-            pathSegments = pathSegments.slice(1);
+        // Remove 'functions', 'v1', and function name from path segments
+        // Example: /functions/v1/posts-api/{id}/like -> ['{id}', 'like']
+        const functionNameIndex = pathSegments.indexOf('posts-api');
+        if (functionNameIndex !== -1) {
+            pathSegments = pathSegments.slice(functionNameIndex + 1);
         }
         
         console.log('Posts API - Method:', method, 'Path:', url.pathname, 'Segments:', pathSegments);
