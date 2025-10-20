@@ -198,6 +198,125 @@ Deno.serve(async (req) => {
             });
         }
         
+        // PUT /posts/{id} - Edit post (15-minute window enforcement)
+        if (method === 'PUT' && pathSegments.length === 1) {
+            if (!userId) {
+                return new Response(JSON.stringify({
+                    error: { code: 'UNAUTHORIZED', message: 'Authentication required' }
+                }), {
+                    status: 401,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            
+            const postId = pathSegments[0];
+            
+            // Fetch the post to check ownership and creation time
+            const postResponse = await fetch(
+                `${supabaseUrl}/rest/v1/posts?id=eq.${postId}&select=*`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'apikey': serviceRoleKey
+                    }
+                }
+            );
+            
+            if (!postResponse.ok) {
+                throw new Error(`Failed to fetch post: ${postResponse.statusText}`);
+            }
+            
+            const posts = await postResponse.json();
+            
+            if (posts.length === 0) {
+                return new Response(JSON.stringify({
+                    error: { code: 'POST_NOT_FOUND', message: 'Post not found' }
+                }), {
+                    status: 404,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            
+            const post = posts[0];
+            
+            // Check if user is the author
+            if (post.author_id !== userId) {
+                return new Response(JSON.stringify({
+                    error: { code: 'FORBIDDEN', message: 'Only the post author can edit the post' }
+                }), {
+                    status: 403,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            
+            // PRD 5.9: Enforce 15-minute edit window
+            const createdAt = new Date(post.created_at);
+            const now = new Date();
+            const minutesElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60);
+            
+            if (minutesElapsed > 15) {
+                return new Response(JSON.stringify({
+                    error: { 
+                        code: 'EDIT_WINDOW_EXPIRED', 
+                        message: 'Posts can only be edited within 15 minutes of creation',
+                        minutes_elapsed: Math.floor(minutesElapsed)
+                    }
+                }), {
+                    status: 403,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            
+            const { text, media_url, link_url } = await req.json();
+            
+            // Validate that at least something is being updated
+            if (text === undefined && media_url === undefined && link_url === undefined) {
+                return new Response(JSON.stringify({
+                    error: { code: 'INVALID_REQUEST', message: 'No fields provided to update' }
+                }), {
+                    status: 400,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            
+            // Update the post
+            const updateData: any = {
+                updated_at: new Date().toISOString(),
+                is_edited: true,
+                edit_count: (post.edit_count || 0) + 1
+            };
+            
+            if (text !== undefined) updateData.text = text;
+            if (media_url !== undefined) updateData.media_url = media_url;
+            if (link_url !== undefined) updateData.link_url = link_url;
+            
+            const updateResponse = await fetch(
+                `${supabaseUrl}/rest/v1/posts?id=eq.${postId}`,
+                {
+                    method: 'PATCH',
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'apikey': serviceRoleKey,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify(updateData)
+                }
+            );
+            
+            if (!updateResponse.ok) {
+                throw new Error(`Failed to update post: ${updateResponse.statusText}`);
+            }
+            
+            const updatedPosts = await updateResponse.json();
+            
+            return new Response(JSON.stringify({
+                data: updatedPosts[0]
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+        
         // GET /posts/{id} - Get specific post details
         if (method === 'GET' && pathSegments.length === 1) {
             const postId = pathSegments[0];
@@ -316,6 +435,130 @@ Deno.serve(async (req) => {
             
             return new Response(JSON.stringify({
                 data: { success: true, already_liked: false }
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+        
+        // DELETE /posts/{id} - Delete post
+        if (method === 'DELETE' && pathSegments.length === 1) {
+            if (!userId) {
+                return new Response(JSON.stringify({
+                    error: { code: 'UNAUTHORIZED', message: 'Authentication required' }
+                }), {
+                    status: 401,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            
+            const postId = pathSegments[0];
+            
+            // Fetch the post to check ownership
+            const postResponse = await fetch(
+                `${supabaseUrl}/rest/v1/posts?id=eq.${postId}&select=*,societies!inner(owner_user_id)`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'apikey': serviceRoleKey
+                    }
+                }
+            );
+            
+            if (!postResponse.ok) {
+                throw new Error(`Failed to fetch post: ${postResponse.statusText}`);
+            }
+            
+            const posts = await postResponse.json();
+            
+            if (posts.length === 0) {
+                return new Response(JSON.stringify({
+                    error: { code: 'POST_NOT_FOUND', message: 'Post not found' }
+                }), {
+                    status: 404,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            
+            const post = posts[0];
+            
+            // PRD 5.9: Check authorization - Author can delete OR Society Owner/Admin
+            let isAuthorized = false;
+            
+            if (post.author_id === userId) {
+                isAuthorized = true; // Post author can delete
+            } else if (post.societies?.owner_user_id === userId) {
+                isAuthorized = true; // Society owner can delete
+            } else {
+                // Check if user is admin of the society
+                const memberCheck = await fetch(
+                    `${supabaseUrl}/rest/v1/society_members?user_id=eq.${userId}&society_id=eq.${post.society_id}&role=in.(admin,owner)`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${serviceRoleKey}`,
+                            'apikey': serviceRoleKey
+                        }
+                    }
+                );
+                
+                if (memberCheck.ok) {
+                    const members = await memberCheck.json();
+                    if (members.length > 0) {
+                        isAuthorized = true; // Society admin can delete
+                    }
+                }
+            }
+            
+            if (!isAuthorized) {
+                return new Response(JSON.stringify({
+                    error: { code: 'FORBIDDEN', message: 'Only the post author or society admin can delete this post' }
+                }), {
+                    status: 403,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            
+            // Delete the post
+            const deleteResponse = await fetch(
+                `${supabaseUrl}/rest/v1/posts?id=eq.${postId}`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'apikey': serviceRoleKey
+                    }
+                }
+            );
+            
+            if (!deleteResponse.ok) {
+                throw new Error(`Failed to delete post: ${deleteResponse.statusText}`);
+            }
+            
+            // PRD 5.9: Write audit log
+            const auditLog = {
+                user_id: userId,
+                action: 'post_delete',
+                target_type: 'post',
+                target_id: postId,
+                details: {
+                    post_text: post.text?.substring(0, 100),
+                    society_id: post.society_id,
+                    is_author: post.author_id === userId
+                },
+                created_at: new Date().toISOString()
+            };
+            
+            await fetch(`${supabaseUrl}/rest/v1/audit_logs`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'apikey': serviceRoleKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(auditLog)
+            });
+            
+            return new Response(JSON.stringify({
+                data: { success: true }
             }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
@@ -440,6 +683,128 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify({
                 data: comments,
                 cursor: comments.length === limit ? comments[comments.length - 1].created_at : null
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        }
+        
+        // DELETE /posts/{postId}/comments/{commentId} - Delete comment
+        if (method === 'DELETE' && pathSegments.length === 3 && pathSegments[1] === 'comments') {
+            if (!userId) {
+                return new Response(JSON.stringify({
+                    error: { code: 'UNAUTHORIZED', message: 'Authentication required' }
+                }), {
+                    status: 401,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            
+            const commentId = pathSegments[2];
+            
+            // Fetch comment to check ownership
+            const commentResponse = await fetch(
+                `${supabaseUrl}/rest/v1/post_comments?id=eq.${commentId}&select=*`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'apikey': serviceRoleKey
+                    }
+                }
+            );
+            
+            if (!commentResponse.ok) {
+                throw new Error(`Failed to fetch comment: ${commentResponse.statusText}`);
+            }
+            
+            const comments = await commentResponse.json();
+            
+            if (comments.length === 0) {
+                return new Response(JSON.stringify({
+                    error: { code: 'COMMENT_NOT_FOUND', message: 'Comment not found' }
+                }), {
+                    status: 404,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            
+            const comment = comments[0];
+            
+            // PRD 5.8, 5.9: Check authorization - Author can delete OR App Admin
+            let isAuthorized = false;
+            
+            if (comment.author_id === userId) {
+                isAuthorized = true; // Comment author can delete
+            } else {
+                // Check if user is app admin
+                const adminCheck = await fetch(
+                    `${supabaseUrl}/rest/v1/admin_users?user_id=eq.${userId}&is_active=eq.true`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${serviceRoleKey}`,
+                            'apikey': serviceRoleKey
+                        }
+                    }
+                );
+                
+                if (adminCheck.ok) {
+                    const admins = await adminCheck.json();
+                    if (admins.length > 0) {
+                        isAuthorized = true; // App admin can delete any comment
+                    }
+                }
+            }
+            
+            if (!isAuthorized) {
+                return new Response(JSON.stringify({
+                    error: { code: 'FORBIDDEN', message: 'Only the comment author or app admin can delete this comment' }
+                }), {
+                    status: 403,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+            
+            // Delete the comment
+            const deleteResponse = await fetch(
+                `${supabaseUrl}/rest/v1/post_comments?id=eq.${commentId}`,
+                {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'apikey': serviceRoleKey
+                    }
+                }
+            );
+            
+            if (!deleteResponse.ok) {
+                throw new Error(`Failed to delete comment: ${deleteResponse.statusText}`);
+            }
+            
+            // PRD 5.9: Write audit log
+            const auditLog = {
+                user_id: userId,
+                action: 'comment_delete',
+                target_type: 'comment',
+                target_id: commentId,
+                details: {
+                    comment_text: comment.text?.substring(0, 100),
+                    post_id: comment.post_id,
+                    is_author: comment.author_id === userId
+                },
+                created_at: new Date().toISOString()
+            };
+            
+            await fetch(`${supabaseUrl}/rest/v1/audit_logs`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'apikey': serviceRoleKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(auditLog)
+            });
+            
+            return new Response(JSON.stringify({
+                data: { success: true }
             }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });

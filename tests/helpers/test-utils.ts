@@ -118,10 +118,15 @@ export async function isAuthenticated(page: Page): Promise<boolean> {
  * Clear test data
  */
 export async function clearTestData(page: Page) {
-  await page.evaluate(() => {
-    localStorage.clear()
-    sessionStorage.clear()
-  })
+  try {
+    await page.evaluate(() => {
+      localStorage.clear()
+      sessionStorage.clear()
+    })
+  } catch (error) {
+    // Ignore errors when localStorage is not accessible (e.g., before page loads)
+    // This can happen in beforeEach hooks before navigation
+  }
 }
 
 /**

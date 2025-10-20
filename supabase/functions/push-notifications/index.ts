@@ -20,7 +20,7 @@ Deno.serve(async (req) => {
     }
 
     try {
-        const { type, targetUserId, actorUserId, targetId, title, message, data } = await req.json();
+        const { type, targetUserId, actorUserId, targetId, societyId, title, message, data } = await req.json();
 
         if (!type || !targetUserId || !title || !message) {
             throw new Error('Missing required fields: type, targetUserId, title, message');
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
             });
         }
 
-        // Check quiet hours
+        // PRD 5.6: Check quiet hours (default 22:00-07:00)
         const now = new Date();
         const currentHour = now.getHours();
         const currentMinutes = now.getMinutes();
@@ -67,30 +67,63 @@ Deno.serve(async (req) => {
         }
 
         if (inQuietHours) {
-            return new Response(JSON.stringify({ data: { sent: false, reason: 'quiet_hours' } }), {
+            // PRD 5.6: Queue notification for later (store with is_sent=false)
+            const notificationData = {
+                user_id: targetUserId,
+                type: type,
+                title: title,
+                message: message,
+                actor_id: actorUserId,
+                target_type: targetId ? getTargetTypeFromId(targetId) : null,
+                target_id: targetId,
+                data: data ? JSON.stringify(data) : null,
+                is_read: false,
+                is_sent: false, // Queue for later
+                created_at: new Date().toISOString()
+            };
+
+            await fetch(`${supabaseUrl}/rest/v1/notifications`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'apikey': serviceRoleKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(notificationData)
+            });
+
+            return new Response(JSON.stringify({ data: { sent: false, reason: 'quiet_hours', queued: true } }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
         }
 
-        // Rate limiting: Check if we've sent too many notifications recently
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-        const recentNotificationsResponse = await fetch(
-            `${supabaseUrl}/rest/v1/notifications?user_id=eq.${targetUserId}&type=eq.${type}&created_at=gte.${oneHourAgo}`,
-            {
-                headers: {
-                    'Authorization': `Bearer ${serviceRoleKey}`,
-                    'apikey': serviceRoleKey
+        // PRD 5.6: Rate limiting - ≤1 notification per society per hour per user
+        if (societyId) {
+            const canSendResponse = await fetch(
+                `${supabaseUrl}/rest/v1/rpc/can_send_notification`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'apikey': serviceRoleKey,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        p_user_id: targetUserId,
+                        p_society_id: societyId
+                    })
                 }
-            }
-        );
+            );
 
-        const recentNotifications = await recentNotificationsResponse.json();
-        
-        // Allow max 3 notifications of same type per hour
-        if (recentNotifications.length >= 3) {
-            return new Response(JSON.stringify({ data: { sent: false, reason: 'rate_limited' } }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-            });
+            const canSend = await canSendResponse.json();
+            
+            if (!canSend) {
+                return new Response(JSON.stringify({ 
+                    data: { sent: false, reason: 'rate_limited_per_society' } 
+                }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
         }
 
         // Create notification record
@@ -104,6 +137,7 @@ Deno.serve(async (req) => {
             target_id: targetId,
             data: data ? JSON.stringify(data) : null,
             is_read: false,
+            is_sent: true, // Sending now (not during quiet hours)
             created_at: new Date().toISOString()
         };
 
@@ -124,6 +158,25 @@ Deno.serve(async (req) => {
         }
 
         const notification = await createResponse.json();
+
+        // PRD 5.6: Record that notification was sent for rate limiting
+        if (societyId) {
+            await fetch(
+                `${supabaseUrl}/rest/v1/rpc/record_notification_sent`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'apikey': serviceRoleKey,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        p_user_id: targetUserId,
+                        p_society_id: societyId
+                    })
+                }
+            );
+        }
 
         // Get user's device tokens for push notifications
         const tokensResponse = await fetch(

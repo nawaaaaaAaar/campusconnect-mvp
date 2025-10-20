@@ -260,6 +260,101 @@ Deno.serve(async (req) => {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' }
             });
 
+        } else if (path.match(/\/admin-api\/comments\/([a-f0-9-]+)$/) && method === 'DELETE') {
+            // PRD 5.8: Admin-only comment deletion with mandatory reason
+            const commentId = path.split('/').pop();
+            const { reason } = await req.json();
+
+            if (!reason || !reason.trim()) {
+                return new Response(JSON.stringify({
+                    error: { code: 'INVALID_REQUEST', message: 'Reason is required for comment deletion' }
+                }), {
+                    status: 400,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+
+            // Verify user is admin
+            const adminCheck = await fetch(`${supabaseUrl}/rest/v1/admin_users?user_id=eq.${userId}&is_active=eq.true`, {
+                headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'apikey': serviceRoleKey
+                }
+            });
+
+            const admins = await adminCheck.json();
+            if (!admins || admins.length === 0) {
+                return new Response(JSON.stringify({
+                    error: { code: 'FORBIDDEN', message: 'Admin privileges required' }
+                }), {
+                    status: 403,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+
+            // Fetch comment before deleting (for audit log)
+            const commentResponse = await fetch(`${supabaseUrl}/rest/v1/post_comments?id=eq.${commentId}&select=*`, {
+                headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'apikey': serviceRoleKey
+                }
+            });
+
+            const comments = await commentResponse.json();
+            if (comments.length === 0) {
+                return new Response(JSON.stringify({
+                    error: { code: 'COMMENT_NOT_FOUND', message: 'Comment not found' }
+                }), {
+                    status: 404,
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                });
+            }
+
+            const comment = comments[0];
+
+            // Delete comment
+            const deleteResponse = await fetch(`${supabaseUrl}/rest/v1/post_comments?id=eq.${commentId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'apikey': serviceRoleKey
+                }
+            });
+
+            if (!deleteResponse.ok) {
+                throw new Error(`Failed to delete comment: ${await deleteResponse.text()}`);
+            }
+
+            // PRD 5.9: Write comprehensive audit log
+            const auditLog = {
+                user_id: userId,
+                action: 'admin_comment_delete',
+                target_type: 'comment',
+                target_id: commentId,
+                details: {
+                    comment_text: comment.text?.substring(0, 200),
+                    comment_author_id: comment.author_id,
+                    post_id: comment.post_id,
+                    reason: reason.trim(),
+                    admin_action: true
+                },
+                created_at: new Date().toISOString()
+            };
+
+            await fetch(`${supabaseUrl}/rest/v1/audit_logs`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'apikey': serviceRoleKey,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(auditLog)
+            });
+
+            return new Response(JSON.stringify({ data: { success: true, reason } }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+
         } else {
             return new Response(JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Endpoint not found' } }), {
                 status: 404,

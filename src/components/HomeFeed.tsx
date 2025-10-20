@@ -5,11 +5,21 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
 import { Textarea } from './ui/textarea'
 import { Separator } from './ui/separator'
-import { Heart, MessageCircle, Share, ExternalLink, Star, Users, TrendingUp, MoreHorizontal, Loader2 } from 'lucide-react'
+import { Heart, MessageCircle, Share, ExternalLink, Star, Users, TrendingUp, MoreHorizontal, Loader2, Edit, Trash2, Flag } from 'lucide-react'
 import { campusAPI } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
+import { EditPostDialog } from './EditPostDialog'
+import { DeleteConfirmDialog } from './DeleteConfirmDialog'
+import { ReportDialog } from './ReportDialog'
+import { telemetry } from '../lib/telemetry'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu'
 
 interface Post {
   id: string
@@ -20,6 +30,9 @@ interface Post {
   media_url?: string
   link_url?: string
   created_at: string
+  updated_at?: string
+  is_edited?: boolean
+  edit_count?: number
   has_liked?: boolean
   likes_count?: number
   comments_count?: number
@@ -52,7 +65,7 @@ interface Comment {
 }
 
 export function HomeFeed() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(false)
   const [cursor, setCursor] = useState<string | null>(null)
@@ -62,6 +75,10 @@ export function HomeFeed() {
   const [comments, setComments] = useState<{ [postId: string]: Comment[] }>({})
   const [newComments, setNewComments] = useState<{ [postId: string]: string }>({})
   const [commentLoading, setCommentLoading] = useState<Set<string>>(new Set())
+  const [editingPost, setEditingPost] = useState<Post | null>(null)
+  const [deletingPost, setDeletingPost] = useState<Post | null>(null)
+  const [deletingComment, setDeletingComment] = useState<{postId: string, commentId: string} | null>(null)
+  const [reportingPost, setReportingPost] = useState<Post | null>(null)
 
   const loadFeed = useCallback(async (loadMore = false) => {
     setLoading(true)
@@ -71,12 +88,26 @@ export function HomeFeed() {
         params.cursor = cursor
       }
       
-      const response = await campusAPI.getHomeFeed(params)
+      // PRD 14: Track feed performance and impressions
+      const response = await telemetry.measure(
+        loadMore ? 'feed_next_page' : 'feed_first_page',
+        () => campusAPI.getHomeFeed(params)
+      )
       
       if (loadMore) {
         setPosts(prev => [...prev, ...response.data])
+        // PRD 14: Track pagination
+        telemetry.track('feed_next_page', {
+          user_id: user?.id,
+          post_count: response.data?.length || 0
+        })
       } else {
         setPosts(response.data)
+        // PRD 14: Track feed impression
+        telemetry.track('feed_impression', {
+          user_id: user?.id,
+          post_count: response.data?.length || 0
+        })
       }
       
       setCursor(response.cursor || null)
@@ -88,7 +119,7 @@ export function HomeFeed() {
     } finally {
       setLoading(false)
     }
-  }, [cursor])
+  }, [cursor, user?.id])
 
   useEffect(() => {
     loadFeed()
@@ -100,6 +131,12 @@ export function HomeFeed() {
         await campusAPI.unlikePost(post.id)
       } else {
         await campusAPI.likePost(post.id)
+        // PRD 14: Track post like
+        telemetry.track('post_like', {
+          user_id: user?.id,
+          post_id: post.id,
+          society_id: post.society_id
+        })
       }
       
       // Update local state
@@ -119,7 +156,7 @@ export function HomeFeed() {
 
   const handleShare = async (post: Post) => {
     try {
-      // PRD Section 5.4: Deep linking support
+      // PRD Section 4, 5.4: Deep linking support
       const shareUrl = `${window.location.origin}/post/${post.id}`
       const shareData = {
         title: `${post.societies?.name} on CampusConnect`,
@@ -138,7 +175,10 @@ export function HomeFeed() {
       }
     } catch (error: any) {
       console.error('Share error:', error)
-      toast.error('Failed to share post')
+      // Don't show error for user cancellation
+      if (error.name !== 'AbortError') {
+        toast.error('Failed to share post')
+      }
     }
   }
 
@@ -209,6 +249,75 @@ export function HomeFeed() {
       return formatDistanceToNow(new Date(dateString), { addSuffix: true })
     } catch {
       return 'Recently'
+    }
+  }
+
+  // Check if post can be edited (within 15 minutes and user is author)
+  const canEditPost = (post: Post): boolean => {
+    if (!user || post.author_id !== user.id) return false
+    
+    const createdAt = new Date(post.created_at)
+    const now = new Date()
+    const minutesElapsed = (now.getTime() - createdAt.getTime()) / (1000 * 60)
+    
+    return minutesElapsed <= 15
+  }
+
+  const handleEditPost = (post: Post) => {
+    setEditingPost(post)
+  }
+
+  const handleEditSuccess = () => {
+    loadFeed() // Reload feed to show updated post
+  }
+
+  // Check if user can delete post (author or society admin/owner)
+  const canDeletePost = (post: Post): boolean => {
+    if (!user) return false
+    // Author can delete or will check admin status on backend
+    return post.author_id === user.id
+  }
+
+  const handleDeletePost = async () => {
+    if (!deletingPost) return
+
+    try {
+      await campusAPI.deletePost(deletingPost.id)
+      toast.success('Post deleted successfully')
+      
+      // Remove from UI
+      setPosts(prev => prev.filter(p => p.id !== deletingPost.id))
+      setDeletingPost(null)
+    } catch (error: any) {
+      console.error('Delete post error:', error)
+      toast.error(error.message || 'Failed to delete post')
+    }
+  }
+
+  const handleDeleteComment = async () => {
+    if (!deletingComment) return
+
+    try {
+      await campusAPI.deleteComment(deletingComment.postId, deletingComment.commentId)
+      toast.success('Comment deleted successfully')
+      
+      // Remove from UI
+      setComments(prev => ({
+        ...prev,
+        [deletingComment.postId]: prev[deletingComment.postId]?.filter(c => c.id !== deletingComment.commentId) || []
+      }))
+      
+      // Update comment count
+      setPosts(prev => prev.map(p => 
+        p.id === deletingComment.postId 
+          ? { ...p, comments_count: Math.max(0, (p.comments_count || 0) - 1) }
+          : p
+      ))
+      
+      setDeletingComment(null)
+    } catch (error: any) {
+      console.error('Delete comment error:', error)
+      toast.error(error.message || 'Failed to delete comment')
     }
   }
 
@@ -303,12 +412,49 @@ export function HomeFeed() {
                         )}
                         <span className="text-sm text-gray-500">•</span>
                         <span className="text-sm text-gray-500">{formatDate(post.created_at)}</span>
+                        {post.is_edited && (
+                          <Badge variant="outline" className="text-xs">
+                            edited
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center space-x-2">
+                    {canEditPost(post) && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleEditPost(post)}
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {canDeletePost(post) && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => setDeletingPost(post)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setReportingPost(post)}>
+                          <Flag className="mr-2 h-4 w-4" />
+                          Report post
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
               </div>
 
@@ -445,13 +591,25 @@ export function HomeFeed() {
                           </Avatar>
                           <div className="flex-1">
                             <div className="bg-gray-100 rounded-lg p-3">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <span className="text-sm font-medium text-gray-900">
-                                  {comment.profiles?.name || 'Anonymous'}
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {formatDate(comment.created_at)}
-                                </span>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm font-medium text-gray-900">
+                                    {comment.profiles?.name || 'Anonymous'}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {formatDate(comment.created_at)}
+                                  </span>
+                                </div>
+                                {user && comment.author_id === user.id && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setDeletingComment({ postId: post.id, commentId: comment.id })}
+                                    className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
                               </div>
                               <p className="text-sm text-gray-800">{comment.text}</p>
                             </div>
@@ -507,6 +665,48 @@ export function HomeFeed() {
           </div>
         )}
       </div>
+
+      {/* Edit Post Dialog */}
+      {editingPost && (
+        <EditPostDialog
+          open={!!editingPost}
+          onOpenChange={(open) => !open && setEditingPost(null)}
+          post={editingPost}
+          onSuccess={handleEditSuccess}
+        />
+      )}
+
+      {/* Delete Post Confirmation */}
+      <DeleteConfirmDialog
+        open={!!deletingPost}
+        onOpenChange={(open) => !open && setDeletingPost(null)}
+        title="Delete Post"
+        description="Are you sure you want to delete this post? This action cannot be undone."
+        onConfirm={handleDeletePost}
+      />
+
+      {/* Delete Comment Confirmation */}
+      <DeleteConfirmDialog
+        open={!!deletingComment}
+        onOpenChange={(open) => !open && setDeletingComment(null)}
+        title="Delete Comment"
+        description="Are you sure you want to delete this comment? This action cannot be undone."
+        onConfirm={handleDeleteComment}
+      />
+
+      {/* Report Post Dialog */}
+      {reportingPost && (
+        <ReportDialog
+          open={!!reportingPost}
+          onOpenChange={(open) => !open && setReportingPost(null)}
+          targetType="post"
+          targetId={reportingPost.id}
+          targetDetails={{
+            title: reportingPost.text.substring(0, 50) + (reportingPost.text.length > 50 ? '...' : ''),
+            author: reportingPost.societies?.name
+          }}
+        />
+      )}
     </div>
   )
 }

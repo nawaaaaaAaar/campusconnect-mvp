@@ -101,6 +101,17 @@ class CampusConnectAPI {
     })
   }
   
+  async editPost(id: string, postData: {
+    text?: string
+    media_url?: string
+    link_url?: string
+  }) {
+    return this.makeRequest(`/posts-api/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(postData),
+    })
+  }
+  
   async getPost(id: string) {
     return this.makeRequest(`/posts-api/${id}`)
   }
@@ -140,6 +151,25 @@ class CampusConnectAPI {
     
     const query = searchParams.toString()
     return this.makeRequest(`/posts-api/${postId}/comments${query ? `?${query}` : ''}`)
+  }
+
+  async deletePost(id: string) {
+    return this.makeRequest(`/posts-api/${id}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async deleteComment(postId: string, commentId: string) {
+    return this.makeRequest(`/posts-api/${postId}/comments/${commentId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  async adminDeleteComment(commentId: string, reason: string) {
+    return this.makeRequest(`/admin-api/comments/${commentId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ reason }),
+    })
   }
   
   // Home Feed API - The Critical 2F:1G Algorithm
@@ -311,6 +341,44 @@ class CampusConnectAPI {
 
   async getAdminAnalytics(range = '7d') {
     return this.makeRequest(`/admin-api/analytics/dashboard?range=${range}`)
+  }
+
+  // PRD 3.3: Categories API
+  async getCategories() {
+    return this.makeRequest('/categories-api')
+  }
+
+  // PRD 3.3: Institutes API
+  async getInstitutes(params?: {
+    limit?: number
+    cursor?: string
+    search?: string
+  }) {
+    const searchParams = new URLSearchParams()
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString())
+        }
+      })
+    }
+    
+    const query = searchParams.toString()
+    return this.makeRequest(`/institutes-api${query ? `?${query}` : ''}`)
+  }
+
+  // PRD 5.8: Reports API
+  async createReport(reportData: {
+    target_type: 'post' | 'comment' | 'society' | 'user'
+    target_id: string
+    reason: string
+    description?: string
+  }) {
+    return this.makeRequest('/reports-api', {
+      method: 'POST',
+      body: JSON.stringify(reportData),
+    })
   }
 }
 

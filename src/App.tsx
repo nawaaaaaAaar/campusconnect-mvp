@@ -5,6 +5,8 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AuthPage } from './pages/AuthPage'
 import { Dashboard } from './pages/Dashboard'
+import { PostDetailPage } from './pages/PostDetailPage'
+import { SocietyProfilePage } from './pages/SocietyProfilePage'
 import { AuthCallback } from './components/auth/AuthCallback'
 import { ProfileSetup } from './components/auth/ProfileSetup'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -43,6 +45,25 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* PRD 4: Deep linking routes */}
+              <Route 
+                path="/post/:id" 
+                element={
+                  <ProtectedRoute>
+                    <PostDetailPage />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              <Route 
+                path="/society/:id" 
+                element={
+                  <ProtectedRoute>
+                    <SocietyProfilePage />
                   </ProtectedRoute>
                 } 
               />

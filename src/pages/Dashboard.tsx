@@ -62,8 +62,9 @@ export function Dashboard() {
     }
   }
 
+  // PRD 5.6: Notification bell opens Settings, not Feed
   const handleNotificationClick = () => {
-    setActiveTab('notifications')
+    setActiveTab('notificationSettings')
   }
 
   const handleTabChange = (tab: string) => {
