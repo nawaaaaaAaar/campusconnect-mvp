@@ -380,7 +380,7 @@ Deno.serve(async (req) => {
         
         // POST /posts/{id}/like - Like a post
         if (method === 'POST' && pathSegments.length === 2 && pathSegments[1] === 'like') {
-            if (!userId) {
+            if (!userId || !userToken) {
                 return new Response(JSON.stringify({
                     error: { code: 'UNAUTHORIZED', message: 'Authentication required' }
                 }), {
@@ -570,7 +570,7 @@ Deno.serve(async (req) => {
         
         // DELETE /posts/{id}/like - Unlike a post
         if (method === 'DELETE' && pathSegments.length === 2 && pathSegments[1] === 'like') {
-            if (!userId) {
+            if (!userId || !userToken) {
                 return new Response(JSON.stringify({
                     error: { code: 'UNAUTHORIZED', message: 'Authentication required' }
                 }), {
@@ -603,7 +603,7 @@ Deno.serve(async (req) => {
         
         // POST /posts/{id}/comments - Add comment to post
         if (method === 'POST' && pathSegments.length === 2 && pathSegments[1] === 'comments') {
-            if (!userId) {
+            if (!userId || !userToken) {
                 return new Response(JSON.stringify({
                     error: { code: 'UNAUTHORIZED', message: 'Authentication required' }
                 }), {
