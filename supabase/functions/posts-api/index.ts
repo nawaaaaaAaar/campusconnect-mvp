@@ -35,12 +35,13 @@ Deno.serve(async (req) => {
         // Get user from auth header
         const authHeader = req.headers.get('authorization');
         let userId = null;
+        let userToken = null; // Store the user's JWT token for RLS operations
         
         if (authHeader) {
-            const token = authHeader.replace('Bearer ', '');
+            userToken = authHeader.replace('Bearer ', '');
             const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
+                    'Authorization': `Bearer ${userToken}`,
                     'apikey': serviceRoleKey
                 }
             });
@@ -395,7 +396,7 @@ Deno.serve(async (req) => {
                 `${supabaseUrl}/rest/v1/post_likes?user_id=eq.${userId}&post_id=eq.${postId}`,
                 {
                     headers: {
-                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'Authorization': `Bearer ${userToken}`,
                         'apikey': serviceRoleKey
                     }
                 }
@@ -419,9 +420,10 @@ Deno.serve(async (req) => {
                 {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'Authorization': `Bearer ${userToken}`,
                         'apikey': serviceRoleKey,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=minimal'
                     },
                     body: JSON.stringify({
                         user_id: userId,
@@ -585,7 +587,7 @@ Deno.serve(async (req) => {
                 {
                     method: 'DELETE',
                     headers: {
-                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'Authorization': `Bearer ${userToken}`,
                         'apikey': serviceRoleKey
                     }
                 }
@@ -628,7 +630,7 @@ Deno.serve(async (req) => {
                 {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'Authorization': `Bearer ${userToken}`,
                         'apikey': serviceRoleKey,
                         'Content-Type': 'application/json',
                         'Prefer': 'return=representation'
