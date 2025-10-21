@@ -7,6 +7,7 @@ import { AuthPage } from './pages/AuthPage'
 import { Dashboard } from './pages/Dashboard'
 import { PostDetailPage } from './pages/PostDetailPage'
 import { SocietyProfilePage } from './pages/SocietyProfilePage'
+import { AdminPage } from './pages/AdminPage'
 import { AuthCallback } from './components/auth/AuthCallback'
 import { ProfileSetup } from './components/auth/ProfileSetup'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -64,6 +65,16 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <SocietyProfilePage />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Admin route - requires authentication */}
+              <Route 
+                path="/admin" 
+                element={
+                  <ProtectedRoute>
+                    <AdminPage />
                   </ProtectedRoute>
                 } 
               />

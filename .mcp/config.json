@@ -1,130 +1,40 @@
 {
-  "mcpServers": {
-    "git": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-git"],
-      "env": {
-        "GIT_REPO_PATH": "."
-      }
-    },
-    "filesystem": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-filesystem"],
-      "env": {
-        "ALLOWED_DIRECTORIES": [
-          ".",
-          "./src",
-          "./public",
-          "./supabase"
-        ]
-      }
-    },
-    "terminal": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-terminal"],
-      "env": {
-        "ALLOWED_COMMANDS": [
-          "npm", "pnpm", "node", "git", "ls", "cat", "echo", "mkdir", "rm", "cp", "mv"
-        ]
-      }
-    },
+  "version": "1.0.0",
+  "name": "campusconnect-mcp",
+  "description": "MCP configuration for CampusConnect application",
+  "servers": {
     "supabase": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-supabase"],
-      "env": {
-        "SUPABASE_URL": "${SUPABASE_URL}",
-        "SUPABASE_ANON_KEY": "${SUPABASE_ANON_KEY}",
-        "SUPABASE_SERVICE_ROLE_KEY": "${SUPABASE_SERVICE_ROLE_KEY}"
-      }
-    },
-    "postgres": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-postgres"],
-      "env": {
-        "POSTGRES_URL": "${POSTGRES_URL}",
-        "POSTGRES_DATABASE": "campusconnect"
-      }
-    },
-    "react": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-react"],
-      "env": {
-        "REACT_APP_PATH": "./src",
-        "REACT_COMPONENTS_PATH": "./src/components"
-      }
-    },
-    "typescript": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-typescript"],
-      "env": {
-        "TS_CONFIG_PATH": "./tsconfig.json",
-        "TS_STRICT_MODE": "true"
-      }
-    },
-    "tailwind": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-tailwind"],
-      "env": {
-        "TAILWIND_CONFIG_PATH": "./tailwind.config.js",
-        "TAILWIND_CSS_PATH": "./src/index.css"
-      }
-    },
-    "jest": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-jest"],
-      "env": {
-        "JEST_CONFIG_PATH": "./jest.config.js",
-        "JEST_TEST_PATH": "./src"
-      }
-    },
-    "eslint": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-eslint"],
-      "env": {
-        "ESLINT_CONFIG_PATH": "./eslint.config.js",
-        "ESLINT_EXTENSIONS": [".ts", ".tsx", ".js", ".jsx"]
-      }
-    },
-    "playwright": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-playwright"],
-      "env": {
-        "PLAYWRIGHT_BASE_URL": "http://localhost:5173",
-        "PLAYWRIGHT_TEST_PATH": "./tests"
-      }
-    },
-    "vercel": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-vercel"],
-      "env": {
-        "VERCEL_TOKEN": "${VERCEL_TOKEN}",
-        "VERCEL_PROJECT_ID": "${VERCEL_PROJECT_ID}"
-      }
-    },
-    "docker": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-docker"],
-      "env": {
-        "DOCKERFILE_PATH": "./Dockerfile",
-        "DOCKER_CONTEXT": "."
-      }
-    },
-    "sentry": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-sentry"],
-      "env": {
-        "SENTRY_DSN": "${SENTRY_DSN}",
-        "SENTRY_ORG": "${SENTRY_ORG}",
-        "SENTRY_PROJECT": "campusconnect"
+      "enabled": true,
+      "type": "database",
+      "config": {
+        "url": "${VITE_SUPABASE_URL}",
+        "anonKey": "${VITE_SUPABASE_ANON_KEY}"
       }
     },
     "firebase": {
-      "command": "npx",
-      "args": ["@modelcontextprotocol/server-firebase"],
-      "env": {
-        "FIREBASE_PROJECT_ID": "${FIREBASE_PROJECT_ID}",
-        "FIREBASE_PRIVATE_KEY": "${FIREBASE_PRIVATE_KEY}"
+      "enabled": true,
+      "type": "messaging",
+      "config": {
+        "projectId": "${VITE_FIREBASE_PROJECT_ID}",
+        "apiKey": "${VITE_FIREBASE_API_KEY}",
+        "authDomain": "${VITE_FIREBASE_AUTH_DOMAIN}",
+        "messagingSenderId": "${VITE_FIREBASE_MESSAGING_SENDER_ID}"
+      }
+    },
+    "sentry": {
+      "enabled": true,
+      "type": "monitoring",
+      "config": {
+        "dsn": "${VITE_SENTRY_DSN}"
       }
     }
-  }
+  },
+  "features": {
+    "authentication": true,
+    "realTimeUpdates": true,
+    "pushNotifications": true,
+    "errorTracking": true,
+    "performanceMonitoring": true
+  },
+  "lastUpdated": "2024-12-19T10:00:00.000Z"
 }

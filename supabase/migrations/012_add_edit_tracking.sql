@@ -18,3 +18,5 @@ COMMENT ON COLUMN posts.edit_count IS 'Number of times post has been edited';
 COMMENT ON COLUMN profiles.timezone IS 'User timezone for quiet hours enforcement (IANA format)';
 
 
+
+

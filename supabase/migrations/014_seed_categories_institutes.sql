@@ -76,3 +76,5 @@ COMMENT ON TABLE categories IS 'PRD 3.3: Society categories for classification a
 COMMENT ON COLUMN categories.display_order IS 'Order in which categories are displayed in UI (lower = higher priority)';
 COMMENT ON COLUMN categories.icon IS 'Emoji or icon identifier for visual display';
 
+
+

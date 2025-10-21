@@ -15,8 +15,11 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:all": "npm run test && npm run test:e2e",
-    "mcp:setup": "node .mcp/setup.js",
-    "mcp:status": "node .mcp/setup.js"
+    "mcp:setup": "node .mcp/setup.js setup",
+    "mcp:status": "node .mcp/setup.js status",
+    "mcp:test": "node .mcp/setup.js test",
+    "mcp:final": "node .mcp/final-status.js",
+    "mcp:verify": "node .mcp/verify-working.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -112,3 +112,5 @@ if ($successCount -gt 0) {
 
 exit $(if ($failCount -gt 0) { 1 } else { 0 })
 
+
+
