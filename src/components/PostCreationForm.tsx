@@ -256,7 +256,9 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
       console.error('Post creation error:', error)
       
       // Handle specific error types
-      if (error.message?.includes('FORBIDDEN')) {
+      if (error.message?.includes('SOCIETY_NOT_VERIFIED')) {
+        toast.error('Your society must be verified before you can create posts. Please wait for admin approval.')
+      } else if (error.message?.includes('FORBIDDEN')) {
         toast.error('You do not have permission to post to this society')
       } else if (error.message?.includes('VALIDATION_ERROR')) {
         toast.error('Please fill in all required fields correctly')
@@ -286,6 +288,10 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
     event: <Calendar className="h-4 w-4" />
   }
 
+  // Check if the selected society is verified
+  const selectedSociety = societies.find(s => s.id === watch('society_id'))
+  const isVerified = selectedSociety?.verified !== false // Default to true if undefined
+
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
@@ -301,6 +307,23 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
       </CardHeader>
       
       <CardContent>
+        {/* PRD: Show "Waiting for approval" for unverified societies */}
+        {!isVerified && selectedSociety && (
+          <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex items-start space-x-3">
+            <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h4 className="text-sm font-semibold text-yellow-900 mb-1">
+                Waiting for Approval
+              </h4>
+              <p className="text-sm text-yellow-800">
+                Your society <strong>{selectedSociety.name}</strong> is pending verification. 
+                You'll be able to create posts once an admin approves your society. 
+                This usually takes 24-48 hours.
+              </p>
+            </div>
+          </div>
+        )}
+        
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
 
           {/* Post Content */}
@@ -510,7 +533,7 @@ export function PostCreationForm({ onSuccess, onCancel }: PostCreationFormProps)
             )}
             <Button 
               type="submit" 
-              disabled={isSubmitting || isUploading}
+              disabled={isSubmitting || isUploading || !isVerified}
               className="bg-blue-600 hover:bg-blue-700"
             >
               {isSubmitting ? (

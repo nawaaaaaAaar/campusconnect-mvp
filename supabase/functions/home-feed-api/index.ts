@@ -109,8 +109,9 @@ Deno.serve(async (req) => {
         
         // Step 2: Fetch posts from followed societies (if any)
         if (followedSocietyIds.length > 0) {
-            let followedQuery = `${supabaseUrl}/rest/v1/posts?select=*,post_likes(count),post_comments(count)`;
+            let followedQuery = `${supabaseUrl}/rest/v1/posts?select=*,post_likes(count),post_comments(count),societies!inner(id,name,verified,category,institute_id,logo_url),profiles!posts_author_id_fkey(id,name,email,avatar_url)`;
             followedQuery += `&society_id=in.(${followedSocietyIds.join(',')})`;
+            followedQuery += `&societies.verified=eq.true`; // PRD: Only show posts from verified societies
             
             if (cursor) {
                 // Parse cursor (created_at:id format)
@@ -136,7 +137,10 @@ Deno.serve(async (req) => {
         }
         
         // Step 3: Fetch global posts (from all societies, excluding followed ones for diversity)
-        let globalQuery = `${supabaseUrl}/rest/v1/posts?select=*,post_likes(count),post_comments(count)`;
+        let globalQuery = `${supabaseUrl}/rest/v1/posts?select=*,post_likes(count),post_comments(count),societies!inner(id,name,verified,category,institute_id,logo_url),profiles!posts_author_id_fkey(id,name,email,avatar_url)`;
+        
+        // PRD: Only show posts from verified societies
+        globalQuery += `&societies.verified=eq.true`;
         
         // Exclude followed societies to ensure diversity
         if (followedSocietyIds.length > 0) {

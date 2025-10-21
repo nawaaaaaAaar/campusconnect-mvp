@@ -594,7 +594,7 @@ export function HomeFeed() {
                               <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center space-x-2">
                                   <span className="text-sm font-medium text-gray-900">
-                                    {comment.profiles?.name || 'Anonymous'}
+                                    {comment.profiles?.name || (comment.profiles?.email ? comment.profiles.email.split('@')[0] : 'User')}
                                   </span>
                                   <span className="text-xs text-gray-500">
                                     {formatDate(comment.created_at)}

@@ -115,9 +115,9 @@ Deno.serve(async (req) => {
                 });
             }
             
-            // Check if user is the owner of the society OR a member
+            // Check if user is the owner of the society OR a member AND society is verified
             const societyCheck = await fetch(
-                `${supabaseUrl}/rest/v1/societies?id=eq.${society_id}&select=owner_user_id`,
+                `${supabaseUrl}/rest/v1/societies?id=eq.${society_id}&select=owner_user_id,verified`,
                 {
                     headers: {
                         'Authorization': `Bearer ${serviceRoleKey}`,
@@ -127,12 +127,30 @@ Deno.serve(async (req) => {
             );
             
             let isAuthorized = false;
+            let societyData = null;
             
             if (societyCheck.ok) {
                 const societies = await societyCheck.json();
-                if (societies.length > 0 && societies[0].owner_user_id === userId) {
-                    // User owns the society - authorized!
-                    isAuthorized = true;
+                if (societies.length > 0) {
+                    societyData = societies[0];
+                    
+                    // PRD: Only verified societies can create posts
+                    if (!societyData.verified) {
+                        return new Response(JSON.stringify({
+                            error: { 
+                                code: 'SOCIETY_NOT_VERIFIED', 
+                                message: 'Your society must be verified before you can create posts. Please wait for admin approval.' 
+                            }
+                        }), {
+                            status: 403,
+                            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                        });
+                    }
+                    
+                    if (societyData.owner_user_id === userId) {
+                        // User owns the society - authorized!
+                        isAuthorized = true;
+                    }
                 }
             }
             
@@ -663,7 +681,7 @@ Deno.serve(async (req) => {
             const limit = parseInt(url.searchParams.get('limit') || '20');
             const cursor = url.searchParams.get('cursor');
             
-            let query = `${supabaseUrl}/rest/v1/post_comments?select=*&post_id=eq.${postId}`;
+            let query = `${supabaseUrl}/rest/v1/post_comments?select=*,profiles!post_comments_author_id_fkey(id,name,email,avatar_url)&post_id=eq.${postId}`;
             
             if (cursor) {
                 query += `&created_at.lt.${cursor}`;

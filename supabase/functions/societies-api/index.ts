@@ -58,13 +58,18 @@ Deno.serve(async (req) => {
             const search = url.searchParams.get('search');
             
             // Select only the most basic columns that must exist
-            let query = `${supabaseUrl}/rest/v1/societies?select=id,name,category,owner_user_id`;
+            let query = `${supabaseUrl}/rest/v1/societies?select=id,name,category,owner_user_id,verified,logo_url,description`;
             
             // Add filters
             const filters = [];
             if (institute) filters.push(`institute_id.eq.${institute}`);
             if (category) filters.push(`category.eq.${category}`);
-            if (verified !== null && verified !== undefined) filters.push(`verified.eq.${verified}`);
+            // PRD: By default, only show verified societies in discovery (unless explicitly queried)
+            if (verified !== null && verified !== undefined) {
+                filters.push(`verified.eq.${verified}`);
+            } else {
+                filters.push(`verified.eq.true`); // Default to verified only
+            }
             if (search) filters.push(`name.ilike.*${search}*`);
             if (cursor) filters.push(`created_at.lt.${cursor}`);
             
