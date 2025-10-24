@@ -15,7 +15,8 @@ const getAllowedOrigins = (): string[] => {
   return [
     'http://localhost:5173',
     'http://localhost:3000',
-    'https://campusconnect.vercel.app', // Production domain
+    'https://campusconnect-mvp.vercel.app', // Production domain
+    'https://campusconnect.vercel.app', // Alternative domain
   ]
 }
 
@@ -74,3 +75,14 @@ export function handleCors(req: Request): Response | null {
   return null
 }
 
+/**
+ * Simple CORS headers for backward compatibility
+ * Use getCorsHeaders() for more sophisticated origin validation
+ */
+export const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE, PATCH',
+  'Access-Control-Max-Age': '86400',
+  'Access-Control-Allow-Credentials': 'false',
+}
