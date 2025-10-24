@@ -78,3 +78,4 @@ COMMENT ON COLUMN categories.icon IS 'Emoji or icon identifier for visual displa
 
 
 
+

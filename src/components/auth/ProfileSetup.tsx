@@ -4,8 +4,10 @@ import { Input } from '../ui/input'
 import { Textarea } from '../ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Badge } from '../ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select'
 import { Loader2, X, Plus } from 'lucide-react'
 import { createOrUpdateProfile } from '../../lib/supabase'
+import { campusAPI } from '../../lib/api'
 import { useAuth } from '../../contexts/AuthContext'
 import { toast } from 'sonner'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -29,9 +31,32 @@ export function ProfileSetup() {
   const [societyCategory, setSocietyCategory] = useState('')
   const [societyDescription, setSocietyDescription] = useState('')
   
+  // Institutes data
+  const [institutes, setInstitutes] = useState<Array<{ id: string; name: string; short_name: string }>>([])
+  const [loadingInstitutes, setLoadingInstitutes] = useState(true)
+  
   const [loading, setLoading] = useState(false)
   const { refreshProfile } = useAuth()
   const navigate = useNavigate()
+  
+  // Fetch institutes on mount
+  useEffect(() => {
+    const fetchInstitutes = async () => {
+      try {
+        const response = await campusAPI.getInstitutes({ limit: 100 })
+        if (response.data) {
+          setInstitutes(response.data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch institutes:', error)
+        toast.error('Failed to load institutes')
+      } finally {
+        setLoadingInstitutes(false)
+      }
+    }
+    
+    fetchInstitutes()
+  }, [])
 
   const courseOptions = ['Computer Science', 'Engineering', 'Business', 'Medicine', 'Law', 'Arts', 'Sciences', 'Other']
   
@@ -146,14 +171,22 @@ export function ProfileSetup() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Institution *</label>
-                <Input
-                  type="text"
-                  placeholder="Your university or college"
+                <Select
                   value={institute}
-                  onChange={(e) => setInstitute(e.target.value)}
-                  required
-                  className="w-full"
-                />
+                  onValueChange={setInstitute}
+                  disabled={loadingInstitutes}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={loadingInstitutes ? "Loading institutes..." : "Select your IIT"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {institutes.map((inst) => (
+                      <SelectItem key={inst.id} value={inst.short_name}>
+                        {inst.short_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

@@ -24,3 +24,4 @@ CREATE INDEX IF NOT EXISTS idx_posts_comments_count ON posts(comments_count DESC
 COMMENT ON COLUMN posts.likes_count IS 'Denormalized count of likes, updated by trigger';
 COMMENT ON COLUMN posts.comments_count IS 'Denormalized count of comments, updated by trigger';
 
+
