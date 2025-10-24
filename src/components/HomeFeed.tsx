@@ -60,6 +60,7 @@ interface Comment {
   profiles?: {
     id: string
     name?: string
+    email?: string
     avatar_url?: string
   }
 }
