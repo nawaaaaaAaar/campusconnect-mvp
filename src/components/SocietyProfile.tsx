@@ -29,11 +29,26 @@ interface SocietyMember {
   }
 }
 
+interface PostWithDetails extends Post {
+  societies?: {
+    id: string
+    name: string
+    logo_url?: string
+    verified: boolean
+  }
+  profiles?: {
+    id: string
+    name?: string
+    email?: string
+    avatar_url?: string
+  }
+}
+
 export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
   const navigate = useNavigate()
   const [society, setSociety] = useState<Society | null>(null)
   const [members, setMembers] = useState<SocietyMember[]>([])
-  const [posts, setPosts] = useState<Post[]>([])
+  const [posts, setPosts] = useState<PostWithDetails[]>([])
   const [activeTab, setActiveTab] = useState('posts')
   const [loading, setLoading] = useState(true)
   const [membersLoading, setMembersLoading] = useState(false)
@@ -78,12 +93,15 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
   const loadPosts = useCallback(async () => {
     setPostsLoading(true)
     try {
-      // Use the API to get posts with full details
-      const response = await campusAPI.getPosts({ 
-        society_id: societyId,
-        limit: 20 
+      // Fetch posts directly from Supabase for this society
+      const response = await fetch(`https://egdavxjkyxvawgguqmvx.supabase.co/rest/v1/posts?society_id=eq.${societyId}&select=*,societies(id,name,logo_url,verified),profiles(id,name,email,avatar_url)&order=created_at.desc&limit=20`, {
+        headers: {
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnZGF2eGpreXh2YXdnZ3VxbXZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5NTMzNDQsImV4cCI6MjA3MTUyOTM0NH0.TeY_4HnYLDyC6DUNJfmCFrmkjjwIneNoctwFxocFfq4',
+          'Content-Type': 'application/json'
+        }
       })
-      setPosts(response.data || [])
+      const postsData = await response.json()
+      setPosts(postsData || [])
     } catch (error: any) {
       console.error('Posts load error:', error)
       toast.error('Failed to load posts')
@@ -98,7 +116,7 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
       // Update the post in the list
       setPosts(prev => prev.map(post => 
         post.id === postId 
-          ? { ...post, is_liked: true, likes_count: (post.likes_count || 0) + 1 }
+          ? { ...post, has_liked: true, likes_count: (post.likes_count || 0) + 1 }
           : post
       ))
     } catch (error: any) {
@@ -112,7 +130,7 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
       // Update the post in the list
       setPosts(prev => prev.map(post => 
         post.id === postId 
-          ? { ...post, is_liked: false, likes_count: Math.max((post.likes_count || 0) - 1, 0) }
+          ? { ...post, has_liked: false, likes_count: Math.max((post.likes_count || 0) - 1, 0) }
           : post
       ))
     } catch (error: any) {
@@ -394,11 +412,11 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className={`flex-1 hover:bg-gray-50 ${post.is_liked ? 'text-red-600' : 'text-gray-600'}`}
-                        onClick={() => post.is_liked ? handleUnlike(post.id) : handleLike(post.id)}
+                        className={`flex-1 hover:bg-gray-50 ${post.has_liked ? 'text-red-600' : 'text-gray-600'}`}
+                        onClick={() => post.has_liked ? handleUnlike(post.id) : handleLike(post.id)}
                       >
-                        <Heart className={`h-4 w-4 mr-2 ${post.is_liked ? 'fill-red-600' : ''}`} />
-                        {post.is_liked ? 'Liked' : 'Like'}
+                        <Heart className={`h-4 w-4 mr-2 ${post.has_liked ? 'fill-red-600' : ''}`} />
+                        {post.has_liked ? 'Liked' : 'Like'}
                       </Button>
                       
                       <Button
