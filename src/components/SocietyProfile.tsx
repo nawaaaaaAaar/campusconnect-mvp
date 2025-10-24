@@ -6,9 +6,10 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { Separator } from './ui/separator'
-import { Users, CheckCircle, UserPlus, UserMinus, MapPin, Calendar, Globe, Mail, Loader2, MessageCircle, Heart } from 'lucide-react'
+import { Users, CheckCircle, UserPlus, UserMinus, MapPin, Calendar, Globe, Mail, Loader2, MessageCircle, Heart, Share2, Bookmark } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
+import { useNavigate } from 'react-router-dom'
 
 interface SocietyProfileProps {
   societyId: string
@@ -29,6 +30,7 @@ interface SocietyMember {
 }
 
 export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
+  const navigate = useNavigate()
   const [society, setSociety] = useState<Society | null>(null)
   const [members, setMembers] = useState<SocietyMember[]>([])
   const [posts, setPosts] = useState<Post[]>([])
@@ -76,20 +78,47 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
   const loadPosts = useCallback(async () => {
     setPostsLoading(true)
     try {
-      const response = await fetch(`https://egdavxjkyxvawgguqmvx.supabase.co/rest/v1/posts?society_id=eq.${societyId}&select=*&order=created_at.desc&limit=10`, {
-        headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVnZGF2eGpreXh2YXdnZ3VxbXZ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU5NTMzNDQsImV4cCI6MjA3MTUyOTM0NH0.TeY_4HnYLDyC6DUNJfmCFrmkjjwIneNoctwFxocFfq4',
-          'Content-Type': 'application/json'
-        }
+      // Use the API to get posts with full details
+      const response = await campusAPI.getPosts({ 
+        society_id: societyId,
+        limit: 20 
       })
-      const postsData = await response.json()
-      setPosts(postsData || [])
+      setPosts(response.data || [])
     } catch (error: any) {
       console.error('Posts load error:', error)
+      toast.error('Failed to load posts')
     } finally {
       setPostsLoading(false)
     }
   }, [societyId])
+  
+  const handleLike = async (postId: string) => {
+    try {
+      await campusAPI.likePost(postId)
+      // Update the post in the list
+      setPosts(prev => prev.map(post => 
+        post.id === postId 
+          ? { ...post, is_liked: true, likes_count: (post.likes_count || 0) + 1 }
+          : post
+      ))
+    } catch (error: any) {
+      toast.error('Failed to like post')
+    }
+  }
+  
+  const handleUnlike = async (postId: string) => {
+    try {
+      await campusAPI.unlikePost(postId)
+      // Update the post in the list
+      setPosts(prev => prev.map(post => 
+        post.id === postId 
+          ? { ...post, is_liked: false, likes_count: Math.max((post.likes_count || 0) - 1, 0) }
+          : post
+      ))
+    } catch (error: any) {
+      toast.error('Failed to unlike post')
+    }
+  }
 
   useEffect(() => {
     if (activeTab === 'members' && members.length === 0) {
@@ -268,47 +297,132 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
           ) : posts.length > 0 ? (
             <div className="space-y-4">
               {posts.map((post) => (
-                <Card key={post.id}>
+                <Card key={post.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="pt-4">
+                    {/* Post Header */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center space-x-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback className="bg-gray-200 text-gray-600">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={post.societies?.logo_url} />
+                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-bold">
                             {society.name.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium text-gray-900">{society.name}</p>
+                          <p className="font-semibold text-gray-900">{society.name}</p>
+                          {post.profiles?.name && (
+                            <p className="text-xs text-gray-500">
+                              Posted by {post.profiles.name}
+                            </p>
+                          )}
                           <p className="text-xs text-gray-500">
                             {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
                           </p>
                         </div>
                       </div>
+                      {society.verified && (
+                        <CheckCircle className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                      )}
                     </div>
                     
-                    {post.text && (
-                      <p className="text-gray-900 mb-3 leading-relaxed">{post.text}</p>
+                    {/* Post Content */}
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => navigate(`/post/${post.id}`)}
+                    >
+                      {post.text && (
+                        <p className="text-gray-900 mb-3 leading-relaxed whitespace-pre-wrap">
+                          {post.text.length > 300 ? (
+                            <>
+                              {post.text.substring(0, 300)}...
+                              <span className="text-blue-600 hover:underline ml-1">See more</span>
+                            </>
+                          ) : (
+                            post.text
+                          )}
+                        </p>
+                      )}
+                      
+                      {/* Media Display */}
+                      {post.media_url && (
+                        <div className="mb-3 -mx-4">
+                          {post.media_url.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                            <img 
+                              src={post.media_url} 
+                              alt="Post media" 
+                              className="w-full object-cover max-h-96 cursor-pointer hover:opacity-95 transition-opacity"
+                            />
+                          ) : post.media_url.match(/\.(mp4|webm|ogg)$/i) ? (
+                            <video 
+                              src={post.media_url} 
+                              controls 
+                              className="w-full max-h-96"
+                            />
+                          ) : (
+                            <div className="w-full h-48 bg-gray-100 flex items-center justify-center">
+                              <p className="text-gray-500">📎 Media attachment</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Engagement Stats */}
+                    {(post.likes_count > 0 || post.comments_count > 0) && (
+                      <div className="flex items-center justify-between text-sm text-gray-500 mb-2 pt-2 border-t">
+                        <div className="flex items-center space-x-4">
+                          {post.likes_count > 0 && (
+                            <span className="flex items-center space-x-1">
+                              <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+                              <span>{post.likes_count}</span>
+                            </span>
+                          )}
+                        </div>
+                        {post.comments_count > 0 && (
+                          <button 
+                            onClick={() => navigate(`/post/${post.id}`)}
+                            className="hover:underline"
+                          >
+                            {post.comments_count} {post.comments_count === 1 ? 'comment' : 'comments'}
+                          </button>
+                        )}
+                      </div>
                     )}
                     
-                    {post.media_url && (
-                      <div className="mb-3">
-                        <img 
-                          src={post.media_url} 
-                          alt="Post media" 
-                          className="w-full rounded-lg object-cover max-h-64"
-                        />
-                      </div>
-                    )}
-                    
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <div className="flex items-center space-x-1">
-                        <Heart className="h-4 w-4" />
-                        <span>{post.likes_count || 0}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <MessageCircle className="h-4 w-4" />
-                        <span>{post.comments_count || 0}</span>
-                      </div>
+                    {/* Action Buttons (Facebook-like) */}
+                    <div className="flex items-center justify-around border-t pt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={`flex-1 hover:bg-gray-50 ${post.is_liked ? 'text-red-600' : 'text-gray-600'}`}
+                        onClick={() => post.is_liked ? handleUnlike(post.id) : handleLike(post.id)}
+                      >
+                        <Heart className={`h-4 w-4 mr-2 ${post.is_liked ? 'fill-red-600' : ''}`} />
+                        {post.is_liked ? 'Liked' : 'Like'}
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1 hover:bg-gray-50 text-gray-600"
+                        onClick={() => navigate(`/post/${post.id}`)}
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Comment
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1 hover:bg-gray-50 text-gray-600"
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/post/${post.id}`)
+                          toast.success('Link copied to clipboard!')
+                        }}
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
