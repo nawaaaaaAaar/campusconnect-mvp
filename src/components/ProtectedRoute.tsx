@@ -7,9 +7,10 @@ import { Loader2 } from 'lucide-react'
 interface ProtectedRouteProps {
   children: React.ReactNode
   requireProfile?: boolean
+  requireAdmin?: boolean
 }
 
-export function ProtectedRoute({ children, requireProfile = true }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requireProfile = true, requireAdmin = false }: ProtectedRouteProps) {
   const { user, profile, loading, profileLoading } = useAuth()
   const location = useLocation()
 
@@ -52,6 +53,12 @@ export function ProtectedRoute({ children, requireProfile = true }: ProtectedRou
     if (location.pathname !== '/profile-setup') {
       return <Navigate to="/profile-setup" replace />
     }
+  }
+
+  // Check if admin access is required
+  if (requireAdmin && profile && !profile.is_admin) {
+    // User is not an admin, redirect to dashboard with error message
+    return <Navigate to="/dashboard" replace />
   }
 
   return <>{children}</>

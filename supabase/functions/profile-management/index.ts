@@ -128,9 +128,22 @@ Deno.serve(async (req) => {
         
         const follows = followsResponse.ok ? await followsResponse.json() : [];
         
+        // Check if user is an admin
+        const adminCheckResponse = await fetch(`${supabaseUrl}/rest/v1/admin_users?user_id=eq.${userId}&is_active=eq.true&select=role`, {
+          headers: {
+            'Authorization': `Bearer ${serviceRoleKey}`,
+            'apikey': serviceRoleKey,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const adminData = adminCheckResponse.ok ? await adminCheckResponse.json() : [];
+        const isAdmin = adminData.length > 0;
+        
         // Add stats and relationships
         const profileData = {
           ...profile,
+          is_admin: isAdmin,
           society_memberships: memberships,
           society_follows: follows,
           stats: {

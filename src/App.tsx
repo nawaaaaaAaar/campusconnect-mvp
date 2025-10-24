@@ -69,11 +69,11 @@ function App() {
                 } 
               />
               
-              {/* Admin route - requires authentication */}
+              {/* Admin route - requires authentication AND admin privileges */}
               <Route 
                 path="/admin" 
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute requireAdmin={true}>
                     <AdminPage />
                   </ProtectedRoute>
                 } 

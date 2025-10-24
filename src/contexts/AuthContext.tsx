@@ -12,6 +12,7 @@ interface UserProfile {
   account_type: 'student' | 'society'
   created_at: string
   updated_at?: string
+  is_admin?: boolean // Admin flag
   stats?: {
     societies_member_of: number
     societies_following: number
