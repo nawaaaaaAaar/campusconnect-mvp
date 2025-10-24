@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
     if (req.method === 'PUT') {
       try {
         const requestData = await req.json();
-        const { name, avatar_url, institute, course } = requestData;
+        const { name, avatar_url, institute, course, account_type } = requestData;
 
         // Validate input
         if (name) {
@@ -206,7 +206,20 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Update profile
+        // Update profile - including account_type for OAuth users who selected it after signup
+        const updateBody: any = {
+          name,
+          avatar_url,
+          institute,
+          course,
+          updated_at: new Date().toISOString()
+        };
+        
+        // Update account_type if provided (important for OAuth users)
+        if (account_type) {
+          updateBody.account_type = account_type;
+        }
+        
         const updateResponse = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${userId}`, {
           method: 'PATCH',
           headers: {
@@ -215,13 +228,7 @@ Deno.serve(async (req) => {
             'Content-Type': 'application/json',
             'Prefer': 'return=representation'
           },
-          body: JSON.stringify({
-            name,
-            avatar_url,
-            institute,
-            course,
-            updated_at: new Date().toISOString()
-          })
+          body: JSON.stringify(updateBody)
         });
 
         if (!updateResponse.ok) {
