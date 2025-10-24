@@ -101,6 +101,7 @@ export function ProfileSetup() {
         institute: institute.trim(),
         course: accountType === 'student' ? (course || undefined) : undefined,
         bio: accountType === 'society' ? societyDescription.trim() || undefined : bio.trim() || undefined,
+        society_category: accountType === 'society' ? (societyCategory || 'Other') : undefined,
         account_type: accountType
       }
       

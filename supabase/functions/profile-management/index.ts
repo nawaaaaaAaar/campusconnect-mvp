@@ -241,6 +241,68 @@ Deno.serve(async (req) => {
         const updatedProfiles = await updateResponse.json();
         const updatedProfile = updatedProfiles?.[0];
 
+        // If this is a society account and they have a name, create a society record
+        if (updatedProfile.account_type === 'society' && name && institute) {
+          // Check if society already exists
+          const societyCheckResponse = await fetch(`${supabaseUrl}/rest/v1/societies?owner_user_id=eq.${userId}`, {
+            headers: {
+              'Authorization': `Bearer ${serviceRoleKey}`,
+              'apikey': serviceRoleKey,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          const existingSocieties = societyCheckResponse.ok ? await societyCheckResponse.json() : [];
+          
+          // Create society if it doesn't exist
+          if (existingSocieties.length === 0) {
+            const societyData = {
+              owner_user_id: userId,
+              name: name,
+              institute_id: institute,
+              description: requestData.bio || '',
+              category: requestData.society_category || 'Other',
+              verified: false, // Requires admin approval
+              is_active: true,
+              created_at: new Date().toISOString()
+            };
+            
+            const createSocietyResponse = await fetch(`${supabaseUrl}/rest/v1/societies`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${serviceRoleKey}`,
+                'apikey': serviceRoleKey,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+              },
+              body: JSON.stringify(societyData)
+            });
+            
+            if (createSocietyResponse.ok) {
+              const createdSocieties = await createSocietyResponse.json();
+              const newSociety = createdSocieties?.[0];
+              
+              // Add owner as member of their own society
+              if (newSociety) {
+                await fetch(`${supabaseUrl}/rest/v1/society_members`, {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'apikey': serviceRoleKey,
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify({
+                    society_id: newSociety.id,
+                    user_id: userId,
+                    role: 'owner',
+                    joined_at: new Date().toISOString()
+                  })
+                });
+              }
+            }
+          }
+        }
+
         return new Response(JSON.stringify({ data: updatedProfile }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
