@@ -1,12 +1,7 @@
--- ==============================================
--- IIT MIGRATION SQL
--- Copy and paste this entire file into Supabase SQL Editor
--- ==============================================
-
--- Step 1: Clear existing sample data
+-- Clear existing sample data
 DELETE FROM institutes WHERE verified = true;
 
--- Step 2: Insert all 23 IITs
+-- Insert all 23 IITs
 INSERT INTO institutes (name, short_name, location, verified) VALUES
   ('Indian Institute of Technology Kharagpur', 'IIT Kharagpur', 'Kharagpur, West Bengal', true),
   ('Indian Institute of Technology Bombay', 'IIT Bombay', 'Mumbai, Maharashtra', true),
@@ -35,10 +30,4 @@ ON CONFLICT (name) DO UPDATE SET
   short_name = EXCLUDED.short_name,
   location = EXCLUDED.location,
   verified = EXCLUDED.verified;
-
--- Step 3: Verify the results
-SELECT COUNT(*) as total_iits FROM institutes WHERE verified = true;
-
--- Step 4: Show first 10 IITs
-SELECT short_name, location FROM institutes WHERE verified = true ORDER BY short_name LIMIT 10;
 
