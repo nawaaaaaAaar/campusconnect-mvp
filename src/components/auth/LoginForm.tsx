@@ -33,7 +33,7 @@ export function LoginForm({ accountType, onSwitchToOTP, onSwitchToSignup, onBack
       return
     }
 
-    // Academic email validation
+    // Academic email validation (client-side first)
     const emailError = getAcademicEmailErrorMessage(email)
     if (emailError) {
       toast.error(emailError)
@@ -47,7 +47,17 @@ export function LoginForm({ accountType, onSwitchToOTP, onSwitchToSignup, onBack
       onSwitchToOTP(email)
     } catch (error: any) {
       console.error('Email OTP error:', error)
-      toast.error(error.message || 'Failed to send login code')
+      // If it's a validation error from our academic email check, show that
+      if (error.message && error.message.includes('invalid')) {
+        const academicError = getAcademicEmailErrorMessage(email)
+        if (academicError) {
+          toast.error(academicError)
+        } else {
+          toast.error('Email address not allowed. Please use your university email.')
+        }
+      } else {
+        toast.error(error.message || 'Failed to send login code')
+      }
     } finally {
       setOtpLoading(false)
     }
