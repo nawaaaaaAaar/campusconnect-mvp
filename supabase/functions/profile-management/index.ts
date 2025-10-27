@@ -66,11 +66,11 @@ Deno.serve(async (req) => {
             },
             body: JSON.stringify({
               id: userId,
-              email: userData.email || '',
-              account_type: userData.app_metadata?.account_type || 'student',
-              name: userData.user_metadata?.name || userData.user_metadata?.full_name || null,
-              avatar_url: userData.user_metadata?.avatar_url || null,
-              created_at: userData.created_at
+              email: user.email || '',
+              account_type: user.app_metadata?.account_type || 'student',
+              name: user.user_metadata?.name || user.user_metadata?.full_name || null,
+              avatar_url: user.user_metadata?.avatar_url || null,
+              created_at: user.created_at
             })
           });
           

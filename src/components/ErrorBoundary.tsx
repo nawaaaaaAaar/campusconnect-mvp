@@ -1,55 +1,58 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react'
-import { Button } from './ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
-import { captureErrorBoundaryError } from '../lib/sentry'
 
 interface Props {
   children: ReactNode
   fallback?: ReactNode
-  onError?: (error: Error, errorInfo: ErrorInfo) => void
 }
 
 interface State {
   hasError: boolean
-  error: Error | null
-  errorInfo: ErrorInfo | null
+  error?: Error
+  errorInfo?: ErrorInfo
 }
 
 export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
-    super(props)
-    this.state = { hasError: false, error: null, errorInfo: null }
+  public state: State = {
+    hasError: false
   }
 
-  static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error, errorInfo: null }
+  public static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error }
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo)
-    
-    // Log error to Sentry
-    captureErrorBoundaryError(error, errorInfo)
-    
-    // Call custom error handler
-    this.props.onError?.(error, errorInfo)
     
     this.setState({
       error,
       errorInfo
     })
+
+    // Report to analytics (non-blocking)
+    try {
+      if (typeof window !== 'undefined' && (window as any).telemetry) {
+        (window as any).telemetry.track('error_boundary_triggered', {
+          error_message: error.message,
+          error_stack: error.stack,
+          component_stack: errorInfo.componentStack,
+          user_agent: navigator.userAgent,
+          url: window.location.href
+        })
+      }
+    } catch (telemetryError) {
+      console.warn('Failed to report error to analytics:', telemetryError)
+    }
   }
 
-  handleRetry = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null })
+  private handleReload = () => {
+    window.location.reload()
   }
 
-  handleGoHome = () => {
-    window.location.href = '/dashboard'
+  private handleGoHome = () => {
+    window.location.href = '/'
   }
 
-  render() {
+  public render() {
     if (this.state.hasError) {
       // Custom fallback UI
       if (this.props.fallback) {
@@ -57,57 +60,68 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md">
-            <CardHeader className="text-center">
-              <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-md w-full space-y-8">
+            <div className="text-center">
+              <div className="mx-auto h-12 w-12 text-red-500">
+                <svg
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.232 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
               </div>
-              <CardTitle className="text-xl text-gray-900">
+              <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
                 Oops! Something went wrong
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-gray-600 text-center">
-                We're sorry, but something unexpected happened. Our team has been notified and is working to fix this issue.
+              </h2>
+              <p className="mt-2 text-sm text-gray-600">
+                We're sorry for the inconvenience. The application encountered an unexpected error.
               </p>
-              
               {process.env.NODE_ENV === 'development' && this.state.error && (
-                <details className="bg-gray-100 p-3 rounded-md">
+                <details className="mt-4 text-left">
                   <summary className="cursor-pointer text-sm font-medium text-gray-700">
-                    Error Details (Development)
+                    Error Details (Development Only)
                   </summary>
-                  <pre className="mt-2 text-xs text-gray-600 whitespace-pre-wrap">
-                    {this.state.error.toString()}
-                    {this.state.errorInfo?.componentStack}
-                  </pre>
+                  <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
+                    <p className="text-sm text-red-800 font-mono">
+                      {this.state.error.message}
+                    </p>
+                    {this.state.error.stack && (
+                      <pre className="mt-2 text-xs text-red-600 overflow-auto max-h-32">
+                        {this.state.error.stack}
+                      </pre>
+                    )}
+                  </div>
                 </details>
               )}
-
-              <div className="flex flex-col space-y-2">
-                <Button 
-                  onClick={this.handleRetry}
-                  className="w-full"
-                  variant="default"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Try Again
-                </Button>
-                <Button 
-                  onClick={this.handleGoHome}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Home className="h-4 w-4 mr-2" />
-                  Go to Dashboard
-                </Button>
-              </div>
-
-              <p className="text-xs text-gray-500 text-center">
-                If this problem persists, please contact support.
+            </div>
+            <div className="mt-8 space-y-4">
+              <button
+                onClick={this.handleReload}
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={this.handleGoHome}
+                className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Go to Homepage
+              </button>
+            </div>
+            <div className="mt-6 text-center">
+              <p className="text-xs text-gray-500">
+                If this problem persists, please contact support with the error details.
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       )
     }

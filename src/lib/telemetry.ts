@@ -174,20 +174,39 @@ class TelemetryService {
       // Send to analytics backend
       // In production, this would send to Supabase Edge Function or external analytics service
       if (!import.meta.env.DEV) {
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analytics-api`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            events: eventsToSend,
-            metrics: metricsToSend
-          })
-        })
+        await this.flushToServer(eventsToSend)
+        await this.flushToServer(metricsToSend)
       }
     } catch (error) {
       console.error('[Telemetry] Failed to flush events:', error)
       // Re-add events if flush failed (with limit to prevent unbounded growth)
       this.events = [...eventsToSend.slice(0, this.maxBatchSize), ...this.events]
       this.metrics = [...metricsToSend.slice(0, this.maxBatchSize), ...this.metrics]
+    }
+  }
+
+  private async flushToServer(events: TelemetryEvent[]): Promise<boolean> {
+    if (events.length === 0) return true
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analytics-api`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+        },
+        body: JSON.stringify(events)
+      })
+
+      if (response.ok) {
+        return true
+      } else {
+        console.warn('Analytics API returned error:', response.status)
+        return false
+      }
+    } catch (error) {
+      console.warn('Analytics API failed:', error.message)
+      return false
     }
   }
 

@@ -121,6 +121,13 @@ export const rateLimitConfigs = {
     maxRequests: 20,
     windowMs: 60 * 1000, // 1 minute
     keyPrefix: 'admin'
+  },
+  
+  // Analytics events - high limits for tracking
+  analytics: {
+    maxRequests: 300,
+    windowMs: 60 * 1000, // 1 minute
+    keyPrefix: 'analytics'
   }
 }
 

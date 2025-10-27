@@ -58,17 +58,40 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const loadProfile = async (currentUser: User) => {
     try {
       setProfileLoading(true)
+      
+      // Validate session before making API call
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        console.log('No active session found')
+        setProfile(null)
+        return
+      }
+
       const userProfile = await getUserProfile()
       setProfile(userProfile)
     } catch (error: any) {
       console.error('Error loading profile:', error)
       
-      // Handle specific error cases
+      // Enhanced error handling with retry logic
       if (error.message?.includes('Invalid authentication token') || 
           error.message?.includes('No active session')) {
-        console.log('Authentication expired, profile set to null')
+        console.log('Authentication expired, clearing session')
+        // Clear potentially invalid session
+        await supabase.auth.signOut()
         setProfile(null)
-      } else if (error.message?.includes('Failed to fetch profile')) {
+        setUser(null)
+      } else if (error.message?.includes('Failed to fetch')) {
+        // Network or server error - could be temporary
+        console.log('Profile API unavailable, will retry on next session check')
+        setProfile(null)
+        // Set a flag to retry later
+        setTimeout(() => {
+          if (currentUser) {
+            console.log('Retrying profile load...')
+            loadProfile(currentUser)
+          }
+        }, 5000) // Retry after 5 seconds
+      } else if (error.message?.includes('Profile not found')) {
         console.log('Profile not found, user may need to complete setup')
         setProfile(null)
       } else {
