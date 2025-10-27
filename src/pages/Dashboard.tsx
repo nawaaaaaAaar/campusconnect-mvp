@@ -6,11 +6,13 @@ import { HomeFeed } from '../components/HomeFeed'
 import { SocietiesDiscovery } from '../components/SocietiesDiscovery'
 import { NotificationsFeed } from '../components/NotificationsFeed'
 import { PostCreationForm } from '../components/PostCreationForm'
+import { SearchBar } from '../components/SearchBar'
+import { ProfileSettings } from '../components/ProfileSettings'
 import { Button } from '../components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Home, Users, Bell } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
-import { signOut } from '../lib/supabase'
+import { signOut, getUserProfile } from '../lib/supabase'
 import { toast } from 'sonner'
 
 export function Dashboard() {
@@ -18,7 +20,9 @@ export function Dashboard() {
   const { profile } = useAuth()
   const [activeTab, setActiveTab] = useState('home')
   const [showPostCreation, setShowPostCreation] = useState(false)
+  const [showProfileSettings, setShowProfileSettings] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<any[]>([])
   const [unreadNotifications, setUnreadNotifications] = useState(0)
 
   useEffect(() => {
@@ -75,17 +79,42 @@ export function Dashboard() {
     } else if (tab === 'create') {
       handleCreatePost()
     } else if (tab === 'profile') {
-      // TODO: Navigate to profile page when implemented
-      toast.info('Profile page coming soon!')
+      setShowProfileSettings(true)
     } else {
       setActiveTab(tab)
     }
   }
 
-  const handleSearch = (query: string) => {
+  const handleSearch = async (query: string) => {
     setSearchQuery(query)
-    if (query) {
-      setActiveTab('discover')
+    if (!query.trim()) {
+      setSearchResults([])
+      return
+    }
+
+    try {
+      // Enhanced search functionality
+      toast.info(`Searching for: ${query}`)
+      
+      // TODO: Implement real search API call
+      // const { data } = await supabase.functions.invoke('search-api', {
+      //   body: { query, type: 'comprehensive' }
+      // })
+      
+      setActiveTab('discover') // Navigate to discover tab to show results
+    } catch (error) {
+      console.error('Search error:', error)
+      toast.error('Search failed')
+    }
+  }
+
+  const handleProfileSave = async (updatedProfile: any) => {
+    try {
+      // Refresh profile from context
+      toast.success('Profile updated successfully!')
+    } catch (error) {
+      console.error('Profile update error:', error)
+      toast.error('Failed to update profile')
     }
   }
 
@@ -167,6 +196,14 @@ export function Dashboard() {
             />
           </div>
         </div>
+      )}
+
+      {/* Profile Settings Modal */}
+      {showProfileSettings && (
+        <ProfileSettings
+          onClose={() => setShowProfileSettings(false)}
+          onSave={handleProfileSave}
+        />
       )}
     </div>
   )

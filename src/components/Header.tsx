@@ -3,6 +3,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
+import { SearchBar } from './SearchBar'
 import { Search, Bell, Plus, LogOut, Settings } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -53,16 +54,24 @@ export function Header({
           
           {/* Search Bar - PRD Section 5.2 */}
           <div className="flex-1 max-w-lg mx-4 hidden md:block">
-            <form onSubmit={handleSearchSubmit} className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                type="text"
+            {onSearch ? (
+              <SearchBar 
+                onSearch={onSearch}
                 placeholder="Search societies, posts, or topics..."
-                value={searchValue}
-                onChange={(e) => setSearchValue(e.target.value)}
-                className="pl-10 pr-4 w-full"
+                showSuggestions={true}
               />
-            </form>
+            ) : (
+              <form onSubmit={handleSearchSubmit} className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search societies, posts, or topics..."
+                  value={searchValue}
+                  onChange={(e) => setSearchValue(e.target.value)}
+                  className="pl-10 pr-4 w-full"
+                />
+              </form>
+            )}
           </div>
           
           {/* Actions */}
