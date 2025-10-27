@@ -19,6 +19,11 @@ export function ProfileSetup() {
   
   const accountType = accountTypeFromUrl || storedAccountType || 'student'
   
+  // Set page title for accessibility
+  useEffect(() => {
+    document.title = `Complete ${accountType === 'society' ? 'Society' : 'Student'} Profile Setup | CampusConnect`
+  }, [accountType])
+  
   const [name, setName] = useState('')
   const [institute, setInstitute] = useState('')
   const [course, setCourse] = useState('')
@@ -157,199 +162,226 @@ export function ProfileSetup() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Full Name *</label>
-                <Input
-                  type="text"
-                  placeholder="Your full name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="w-full"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Institution *</label>
-                <Select
-                  value={institute}
-                  onValueChange={setInstitute}
-                  disabled={loadingInstitutes}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={loadingInstitutes ? "Loading institutes..." : "Select your IIT"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {institutes.map((inst) => (
-                      <SelectItem key={inst.id} value={inst.short_name}>
-                        {inst.short_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Society-specific fields */}
-            {accountType === 'society' && (
-              <>
+          <main role="main" aria-label="Profile Setup Form">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Society Name *</label>
+                  <label htmlFor="full-name" className="text-sm font-medium">Full Name *</label>
                   <Input
+                    id="full-name"
                     type="text"
-                    placeholder="Your society name"
-                    value={societyName}
-                    onChange={(e) => setSocietyName(e.target.value)}
+                    placeholder="Your full name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                     required
+                    aria-label="Full Name"
+                    aria-describedby="full-name-description"
                     className="w-full"
                   />
+                  <span id="full-name-description" className="sr-only">Enter your full legal name</span>
                 </div>
-                
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Society Category</label>
-                  <select 
-                    value={societyCategory} 
-                    onChange={(e) => setSocietyCategory(e.target.value)}
-                    className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                  <label htmlFor="institution-select" className="text-sm font-medium">Institution *</label>
+                  <Select
+                    value={institute}
+                    onValueChange={setInstitute}
+                    disabled={loadingInstitutes}
                   >
-                    <option value="">Select category</option>
-                    {societyCategories.map(category => (
-                      <option key={category} value={category}>{category}</option>
+                    <SelectTrigger 
+                      id="institution-select"
+                      className="w-full"
+                      aria-label="Institution Selection"
+                      aria-describedby="institution-description"
+                    >
+                      <SelectValue placeholder={loadingInstitutes ? "Loading institutes..." : "Select your IIT"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {institutes.map((inst) => (
+                        <SelectItem key={inst.id} value={inst.short_name}>
+                          {inst.short_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span id="institution-description" className="sr-only">Select your educational institution</span>
+                </div>
+              </div>
+
+              {/* Society-specific fields */}
+              {accountType === 'society' && (
+                <>
+                  <div className="space-y-2">
+                    <label htmlFor="society-name" className="text-sm font-medium">Society Name *</label>
+                    <Input
+                      id="society-name"
+                      type="text"
+                      placeholder="Your society name"
+                      value={societyName}
+                      onChange={(e) => setSocietyName(e.target.value)}
+                      required
+                      aria-label="Society Name"
+                      aria-describedby="society-name-description"
+                      className="w-full"
+                    />
+                    <span id="society-name-description" className="sr-only">Enter your society's official name</span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="society-category" className="text-sm font-medium">Society Category</label>
+                    <select 
+                      id="society-category"
+                      value={societyCategory} 
+                      onChange={(e) => setSocietyCategory(e.target.value)}
+                      aria-label="Society Category"
+                      aria-describedby="society-category-description"
+                      className="w-full px-3 py-3 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent h-11"
+                    >
+                      <option value="">Select category</option>
+                      {societyCategories.map(category => (
+                        <option key={category} value={category}>{category}</option>
+                      ))}
+                    </select>
+                    <span id="society-category-description" className="sr-only">Choose the category that best describes your society</span>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="society-description" className="text-sm font-medium">Society Description</label>
+                    <Textarea
+                      id="society-description"
+                      placeholder="Describe your society's mission and activities"
+                      value={societyDescription}
+                      onChange={(e) => setSocietyDescription(e.target.value)}
+                      aria-label="Society Description"
+                      aria-describedby="society-description-help"
+                      className="w-full min-h-[80px] resize-none"
+                      maxLength={500}
+                    />
+                    <div id="society-description-help" className="text-xs text-muted-foreground text-right">
+                      {societyDescription.length}/500 characters
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Student-specific course field */}
+              {accountType === 'student' && (
+                <div className="space-y-2">
+                  <label htmlFor="course-field" className="text-sm font-medium">Course/Field of Study</label>
+                  <select 
+                    id="course-field"
+                    value={course} 
+                    onChange={(e) => setCourse(e.target.value)}
+                    aria-label="Course or Field of Study"
+                    aria-describedby="course-field-description"
+                    className="w-full px-3 py-3 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent h-11"
+                  >
+                    <option value="">Select your field of study</option>
+                    {courseOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
                     ))}
                   </select>
+                  <span id="course-field-description" className="sr-only">Select your academic field or course of study</span>
                 </div>
-                
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Society Description</label>
-                  <Textarea
-                    placeholder="Describe your society's mission and activities"
-                    value={societyDescription}
-                    onChange={(e) => setSocietyDescription(e.target.value)}
-                    className="w-full min-h-[80px] resize-none"
-                    maxLength={500}
-                  />
-                  <div className="text-xs text-muted-foreground text-right">
-                    {societyDescription.length}/500 characters
+              )}
+
+              <div className="space-y-2">
+                <label htmlFor="bio-textarea" className="text-sm font-medium">Bio</label>
+                <Textarea
+                  id="bio-textarea"
+                  placeholder={accountType === 'society' ? "Tell us about your society's mission and activities (optional)" : "Tell us a bit about yourself (optional)"}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  aria-label="Bio"
+                  aria-describedby="bio-description"
+                  className="w-full min-h-[80px] resize-none"
+                  maxLength={500}
+                />
+                <div id="bio-description" className="text-xs text-muted-foreground text-right">
+                  {bio.length}/500 characters
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Interests</label>
+                <div className="space-y-4">
+                  <div className="flex flex-wrap gap-2" role="list" aria-label="Selected interests">
+                    {interests.map((interest, index) => (
+                      <Badge key={index} variant="secondary" className="flex items-center gap-1" role="listitem">
+                        {interest}
+                        <button
+                          type="button"
+                          onClick={() => removeInterest(interest)}
+                          aria-label={`Remove ${interest} from interests`}
+                          className="ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full p-0.5"
+                        >
+                          <X size={12} />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <p className="text-sm text-muted-foreground">Popular interests:</p>
+                    <div className="flex flex-wrap gap-2" role="list" aria-label="Popular interests">
+                      {commonInterests.map((interest) => (
+                        <button
+                          key={interest}
+                          type="button"
+                          onClick={() => addInterest(interest)}
+                          className="inline-flex items-center gap-1 px-3 py-1 text-sm bg-secondary text-secondary-foreground rounded-full hover:bg-secondary/80"
+                          aria-label={`Add ${interest} to interests`}
+                        >
+                          {interest}
+                          <Plus size={12} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Input
+                      id="custom-interest"
+                      type="text"
+                      placeholder="Add a custom interest"
+                      value={newInterest}
+                      onChange={(e) => setNewInterest(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          addInterest(newInterest)
+                        }
+                      }}
+                      aria-label="Custom Interest"
+                      aria-describedby="custom-interest-description"
+                      className="w-full"
+                    />
+                    <span id="custom-interest-description" className="sr-only">Enter a custom interest and press enter to add it</span>
                   </div>
                 </div>
-              </>
-            )}
-
-            {/* Student-specific course field */}
-            {accountType === 'student' && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Course/Field of Study</label>
-                <select 
-                  value={course} 
-                  onChange={(e) => setCourse(e.target.value)}
-                  className="w-full px-3 py-2 border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-                >
-                  <option value="">Select your field of study</option>
-                  {courseOptions.map(option => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
               </div>
-            )}
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Bio</label>
-              <Textarea
-                placeholder="Tell us a bit about yourself (optional)"
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                className="w-full min-h-[80px] resize-none"
-                maxLength={500}
-              />
-              <div className="text-xs text-muted-foreground text-right">
-                {bio.length}/500 characters
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-sm font-medium">Interests</label>
-              
-              {/* Current interests */}
-              {interests.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {interests.map((interest, index) => (
-                    <Badge key={index} variant="secondary" className="pr-1">
-                      {interest}
-                      <button
-                        type="button"
-                        onClick={() => removeInterest(interest)}
-                        className="ml-1 hover:bg-destructive hover:text-destructive-foreground rounded-full p-0.5"
-                      >
-                        <X size={12} />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              
-              {/* Common interests */}
-              <div className="space-y-2">
-                <div className="text-xs text-muted-foreground">Popular interests:</div>
-                <div className="flex flex-wrap gap-2">
-                  {commonInterests
-                    .filter(interest => !interests.includes(interest))
-                    .slice(0, 12)
-                    .map((interest) => (
-                    <Badge 
-                      key={interest} 
-                      variant="outline" 
-                      className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors"
-                      onClick={() => addInterest(interest)}
-                    >
-                      <Plus size={12} className="mr-1" />
-                      {interest}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Add custom interest */}
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  placeholder="Add a custom interest"
-                  value={newInterest}
-                  onChange={(e) => setNewInterest(e.target.value)}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      addInterest(newInterest)
-                    }
-                  }}
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="submit"
+                  disabled={loading || !name.trim() || !institute.trim() || (accountType === 'society' && !societyName.trim())}
                   className="flex-1"
-                />
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => addInterest(newInterest)}
-                  disabled={!newInterest.trim()}
+                  aria-describedby="submit-button-description"
                 >
-                  <Plus size={16} />
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {accountType === 'society' ? 'Creating Society...' : 'Creating Profile...'}
+                    </>
+                  ) : (
+                    `Complete ${accountType === 'society' ? 'Society' : 'Student'} Setup`
+                  )}
                 </Button>
+                <span id="submit-button-description" className="sr-only">
+                  {accountType === 'society' ? 'Create your society profile' : 'Create your student profile'}
+                </span>
               </div>
-            </div>
-
-            <Button 
-              type="submit" 
-              className="w-full"
-              disabled={loading || !name.trim() || !institute.trim()}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Profile...
-                </>
-              ) : (
-                `Complete ${accountType === 'society' ? 'Society' : 'Student'} Setup`
-              )}
-            </Button>
-          </form>
+            </form>
+          </main>
         </CardContent>
       </Card>
     </div>

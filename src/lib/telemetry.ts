@@ -180,11 +180,14 @@ class TelemetryService {
         await this.flushToServer(eventsToSend)
         // Metrics can be sent as events or handled differently
         if (metricsToSend.length > 0) {
-          console.log(`[Telemetry] Skipping ${metricsToSend.length} performance metrics (separate pipeline)`)
+          console.debug(`[Telemetry] Skipping ${metricsToSend.length} performance metrics (separate pipeline)`)
         }
       }
     } catch (error) {
-      console.error('[Telemetry] Failed to flush events:', error)
+      // Only log critical errors, not API unavailability
+      if (!(error instanceof TypeError && error.message.includes('Failed to fetch'))) {
+        console.debug('[Telemetry] Failed to flush events:', error)
+      }
       // Re-add events if flush failed (with limit to prevent unbounded growth)
       this.events = [...eventsToSend.slice(0, this.maxBatchSize), ...this.events]
       this.metrics = [...metricsToSend.slice(0, this.maxBatchSize), ...this.metrics]
@@ -206,12 +209,21 @@ class TelemetryService {
 
       if (response.ok) {
         return true
+      } else if (response.status === 404) {
+        // Analytics API not deployed - silently ignore
+        console.debug('[Telemetry] Analytics API not available, events will be dropped')
+        return true
       } else {
-        console.warn('Analytics API returned error:', response.status)
+        console.debug(`[Telemetry] Analytics API returned ${response.status}, events will be dropped`)
         return false
       }
     } catch (error) {
-      console.warn('Analytics API failed:', error.message)
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        // Network error or API unavailable - silently ignore
+        console.debug('[Telemetry] Analytics API unavailable, events will be dropped')
+      } else {
+        console.debug('[Telemetry] Analytics API error:', error)
+      }
       return false
     }
   }

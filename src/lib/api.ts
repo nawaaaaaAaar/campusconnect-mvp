@@ -16,18 +16,45 @@ class CampusConnectAPI {
       headers['Authorization'] = `Bearer ${session.access_token}`
     }
     
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers,
-    })
-    
-    const result = await response.json()
-    
-    if (!response.ok) {
-      throw new Error(result.error?.message || 'API request failed')
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        ...options,
+        headers,
+      })
+      
+      // Handle 404 responses gracefully (API not deployed)
+      if (response.status === 404) {
+        console.debug(`[API] Endpoint ${endpoint} not available, returning empty result`)
+        return { data: [] }
+      }
+      
+      const result = await response.json()
+      
+      if (!response.ok) {
+        // For non-critical APIs, return empty result instead of throwing
+        if (endpoint.includes('notifications-api') || endpoint.includes('analytics-api')) {
+          console.debug(`[API] ${endpoint} failed with ${response.status}, returning empty result`)
+          return { data: [] }
+        }
+        throw new Error(result.error?.message || 'API request failed')
+      }
+      
+      return result
+    } catch (error) {
+      // Handle network errors gracefully
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        console.debug(`[API] Network error for ${endpoint}, returning empty result`)
+        return { data: [] }
+      }
+      
+      // For non-critical APIs, return empty result instead of throwing
+      if (endpoint.includes('notifications-api') || endpoint.includes('analytics-api')) {
+        console.debug(`[API] Error for ${endpoint}, returning empty result:`, error)
+        return { data: [] }
+      }
+      
+      throw error
     }
-    
-    return result
   }
   
   // Societies API
