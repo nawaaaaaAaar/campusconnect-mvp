@@ -4,7 +4,7 @@ import { Input } from '../ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
 import { Label } from '../ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
-import { Loader2, Mail, Eye, EyeOff, UserPlus, ArrowLeft } from 'lucide-react'
+import { Loader2, Mail, Eye, EyeOff, UserPlus, ArrowLeft, AlertTriangle } from 'lucide-react'
 import { signInWithEmail, signInWithPassword, signInWithGoogle } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { toast } from 'sonner'
@@ -121,6 +121,18 @@ export function LoginForm({ accountType, onSwitchToOTP, onSwitchToSignup, onBack
           </TabsList>
           
           <TabsContent value="password" className="space-y-4 mt-4">
+            {/* 🔒 Institutional Email Notice */}
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="flex items-start space-x-2">
+                <AlertTriangle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-blue-800">
+                  <p className="font-medium mb-1">Academic Email Required</p>
+                  <p>Only university and college email addresses are accepted (e.g., user@iit.edu, user@university.ac.in)</p>
+                  <p className="mt-1">Personal email providers like Gmail, Yahoo, Outlook are not allowed.</p>
+                </div>
+              </div>
+            </div>
+            
             <form onSubmit={handlePasswordSignIn} className="space-y-4">
               <div className="space-y-2">
                 <Input
@@ -169,6 +181,18 @@ export function LoginForm({ accountType, onSwitchToOTP, onSwitchToSignup, onBack
           </TabsContent>
           
           <TabsContent value="otp" className="space-y-4 mt-4">
+            {/* 🔒 Institutional Email Notice */}
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <div className="flex items-start space-x-2">
+                <AlertTriangle className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-blue-800">
+                  <p className="font-medium mb-1">Academic Email Required</p>
+                  <p>Only university and college email addresses are accepted</p>
+                  <p className="mt-1">Personal email providers like Gmail, Yahoo, Outlook are not allowed.</p>
+                </div>
+              </div>
+            </div>
+            
             <form onSubmit={handleEmailOTP} className="space-y-4">
               <div className="space-y-2">
                 <Input
@@ -241,7 +265,7 @@ export function LoginForm({ accountType, onSwitchToOTP, onSwitchToSignup, onBack
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                 />
               </svg>
-              Continue with Google
+              Continue with Google (Institutional Email Only)
             </>
           )}
         </Button>

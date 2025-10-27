@@ -42,8 +42,26 @@ export function ProtectedRoute({ children, requireProfile = true, requireAdmin =
 
   // Check if profile is required and not complete
   if (requireProfile && profile) {
-    // Profile is complete if user has name and institute
-    const isProfileComplete = profile.name && profile.institute;
+    // 🔧 IMPROVED: Profile completeness check for different account types
+    const isProfileComplete = (() => {
+      // Basic requirements for all account types
+      if (!profile.name) return false
+      if (!profile.account_type) return false
+      
+      // For societies, we don't require institute
+      if (profile.account_type === 'society') {
+        // Society accounts need: name, account_type, and either society_name or bio
+        return profile.name && 
+               (profile.society_name || profile.bio || profile.name !== profile.email)
+      }
+      
+      // For students, we require institute
+      if (profile.account_type === 'student') {
+        return profile.name && profile.institute
+      }
+      
+      return false
+    })()
     
     if (!isProfileComplete && location.pathname !== '/profile-setup') {
       return <Navigate to="/profile-setup" replace />

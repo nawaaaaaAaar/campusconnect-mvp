@@ -1,8 +1,9 @@
 import React, { useEffect } from 'react'
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card'
-import { Loader2 } from 'lucide-react'
+import { Loader2, AlertTriangle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { getAcademicEmailErrorMessage } from '../../lib/security'
 import { toast } from 'sonner'
 
 export function AuthCallback() {
@@ -29,6 +30,31 @@ export function AuthCallback() {
 
           if (data.session && data.session.user) {
             console.log('OAuth user authenticated:', data.session.user.email)
+            
+            // 🔒 ENHANCED: Validate Google OAuth email domain
+            const userEmail = data.session.user.email
+            if (userEmail) {
+              const emailError = getAcademicEmailErrorMessage(userEmail)
+              if (emailError) {
+                // Sign out the user immediately and show error
+                await supabase.auth.signOut()
+                toast.error(emailError)
+                navigate('/auth', { 
+                  state: { 
+                    emailError: emailError,
+                    email: userEmail 
+                  } 
+                })
+                return
+              }
+            } else {
+              // No email from Google OAuth - this shouldn't happen but handle it
+              await supabase.auth.signOut()
+              toast.error('No email provided by Google. Please use a different sign-in method.')
+              navigate('/auth')
+              return
+            }
+            
             toast.success(`Welcome, ${data.session.user.email || data.session.user.user_metadata?.name}!`)
             
             // Check if user needs profile setup
@@ -136,6 +162,24 @@ export function AuthCallback() {
 
         if (data.session && data.session.user) {
           console.log('User authenticated via session:', data.session.user.email)
+          
+          // 🔒 ENHANCED: Validate session email domain as well
+          const userEmail = data.session.user.email
+          if (userEmail) {
+            const emailError = getAcademicEmailErrorMessage(userEmail)
+            if (emailError) {
+              // Sign out and redirect with error
+              await supabase.auth.signOut()
+              toast.error(emailError)
+              navigate('/auth', { 
+                state: { 
+                  emailError: emailError,
+                  email: userEmail 
+                } 
+              })
+              return
+            }
+          }
           
           // Check if user needs profile setup
           try {

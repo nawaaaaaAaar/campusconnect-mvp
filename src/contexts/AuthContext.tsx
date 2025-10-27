@@ -72,7 +72,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch (error: any) {
       console.error('Error loading profile:', error)
       
-      // Enhanced error handling with retry logic
+      // 🔧 IMPROVED: More specific error handling
       if (error.message?.includes('Invalid authentication token') || 
           error.message?.includes('No active session')) {
         console.log('Authentication expired, clearing session')
@@ -83,7 +83,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       } else if (error.message?.includes('Failed to fetch')) {
         // Network or server error - could be temporary
         console.log('Profile API unavailable, will retry on next session check')
-        setProfile(null)
+        // Don't set profile to null on network errors - keep existing profile if available
+        if (!profile) {
+          setProfile(null)
+        }
         // Set a flag to retry later
         setTimeout(() => {
           if (currentUser) {
@@ -95,9 +98,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log('Profile not found, user may need to complete setup')
         setProfile(null)
       } else {
-        // For other errors, still set profile to null to allow profile setup
-        console.log('Profile loading failed, user may need to complete setup')
-        setProfile(null)
+        // For other errors, be more careful - don't automatically assume profile setup is needed
+        console.log('Profile loading error, keeping existing profile state')
+        // Only set profile to null if we don't already have one
+        if (!profile) {
+          setProfile(null)
+        }
       }
     } finally {
       setProfileLoading(false)
