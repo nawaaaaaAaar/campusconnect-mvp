@@ -42,33 +42,35 @@ export function ProtectedRoute({ children, requireProfile = true, requireAdmin =
 
   // Check if profile is required and not complete
   if (requireProfile && profile) {
-    // 🔧 IMPROVED: Profile completeness check for different account types
+    // 🔧 ENHANCED: More flexible profile completeness check
     const isProfileComplete = (() => {
       // Basic requirements for all account types
-      if (!profile.name) return false
+      if (!profile.name || profile.name.trim().length < 2) return false
       if (!profile.account_type) return false
       
-      // For societies, we don't require institute
+      // For societies, be more lenient about required fields
       if (profile.account_type === 'society') {
-        // Society accounts need: name, account_type, and either society_name or bio
-        return profile.name && 
-               (profile.society_name || profile.bio || profile.name !== profile.email)
+        // Society accounts: name + account type is enough to consider "complete enough"
+        // Full society details can be added later
+        return profile.name && profile.name !== profile.email
       }
       
-      // For students, we require institute
+      // For students, require institute as well
       if (profile.account_type === 'student') {
-        return profile.name && profile.institute
+        return profile.name && profile.institute && profile.institute.trim().length > 0
       }
       
       return false
     })()
     
     if (!isProfileComplete && location.pathname !== '/profile-setup') {
+      console.log('Profile not complete, redirecting to setup')
       return <Navigate to="/profile-setup" replace />
     }
   } else if (requireProfile && !profile) {
     // If profile is required but doesn't exist, redirect to profile setup
     if (location.pathname !== '/profile-setup') {
+      console.log('No profile found, redirecting to setup')
       return <Navigate to="/profile-setup" replace />
     }
   }

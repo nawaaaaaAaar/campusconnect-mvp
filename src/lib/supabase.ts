@@ -155,21 +155,51 @@ export async function getUserProfile() {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('No active session')
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/profile-management`, {
-    method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${session.access_token}`,
-      'Content-Type': 'application/json'
+  try {
+    // Try Edge Function first
+    const response = await fetch(`${supabaseUrl}/functions/v1/profile-management`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json'
+      }
+    })
+
+    if (response.ok) {
+      const result = await response.json()
+      return result.data
     }
-  })
-
-  if (!response.ok) {
-    const errorData = await response.json()
-    throw new Error(errorData.error?.message || 'Failed to fetch profile')
+    
+    // Edge Function failed, try direct database query
+    console.warn('Profile-management API failed, trying direct database query')
+    
+    // Direct database query as fallback
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+    
+    if (profileError) {
+      console.error('Profile query error:', profileError)
+      throw new Error('Profile not found')
+    }
+    
+    return profileData
+    
+  } catch (error) {
+    console.error('Profile loading failed:', error)
+    
+    // Final fallback: return a basic profile object to prevent setup loops
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.user_metadata?.name || user.email?.split('@')[0] || '',
+      account_type: user.app_metadata?.account_type || 'student',
+      created_at: user.created_at,
+      profile_complete: false
+    }
   }
-
-  const result = await response.json()
-  return result.data
 }
 
 export async function createOrUpdateProfile(profileData: {
