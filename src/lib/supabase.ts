@@ -16,34 +16,74 @@ export async function getCurrentUser() {
 }
 
 export async function signInWithEmail(email: string) {
-  const { data, error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: `${window.location.protocol}//${window.location.host}/auth/callback`
-    }
-  })
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/send-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || supabaseAnonKey}`
+      },
+      body: JSON.stringify({
+        email: email,
+        action: 'signin'
+      })
+    })
 
-  if (error) {
+    const result = await response.json()
+
+    if (!response.ok) {
+      throw new Error(result.error?.message || 'Failed to send OTP')
+    }
+
+    return result
+  } catch (error: any) {
     console.error('Error sending OTP:', error.message)
     throw error
   }
-
-  return data
 }
 
 export async function verifyOTP(email: string, otp: string) {
-  const { data, error } = await supabase.auth.verifyOtp({
-    email,
-    token: otp,
-    type: 'email'
-  })
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/verify-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`
+      },
+      body: JSON.stringify({
+        email: email,
+        otp: otp
+      })
+    })
 
-  if (error) {
+    const result = await response.json()
+
+    if (!response.ok) {
+      throw new Error(result.error?.message || 'Invalid verification code')
+    }
+
+    // If verification is successful, sign in the user with Supabase Auth
+    if (result.data?.verified) {
+      const { data, error } = await supabase.auth.signInWithOtp({
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.protocol}//${window.location.host}/dashboard`
+        }
+      })
+
+      if (error) {
+        console.error('Supabase sign in error:', error.message)
+        throw error
+      }
+
+      return { data, user: result.data.user }
+    }
+
+    return result
+  } catch (error: any) {
     console.error('Error verifying OTP:', error.message)
     throw error
   }
-
-  return data
 }
 
 export async function signInWithGoogle(accountType?: 'student' | 'society') {
