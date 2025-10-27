@@ -10,6 +10,7 @@ import { Users, CheckCircle, UserPlus, UserMinus, MapPin, Calendar, Globe, Mail,
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
+import { MemberSocietyCommunication } from './MemberSocietyCommunication'
 
 interface SocietyProfileProps {
   societyId: string
@@ -300,10 +301,11 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
 
       {/* Society Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 bg-white border">
+        <TabsList className="grid w-full grid-cols-4 bg-white border">
           <TabsTrigger value="posts">Posts</TabsTrigger>
           <TabsTrigger value="about">About</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
+          <TabsTrigger value="communication">Communication</TabsTrigger>
         </TabsList>
 
         <TabsContent value="posts" className="mt-6">
@@ -556,6 +558,13 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="communication" className="mt-6">
+          <MemberSocietyCommunication 
+            societyId={societyId} 
+            societyName={society.name}
+          />
         </TabsContent>
       </Tabs>
     </div>

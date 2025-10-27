@@ -407,6 +407,61 @@ class CampusConnectAPI {
       body: JSON.stringify(reportData),
     })
   }
+
+  // Member-Society Communication API
+  async sendMemberMessage(societyId: string, messageData: {
+    message_type?: 'message' | 'announcement' | 'feedback'
+    subject?: string
+    content: string
+    is_urgent?: boolean
+    parent_message_id?: string
+  }) {
+    return this.makeRequest(`/member-communication-api/societies/${societyId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(messageData),
+    })
+  }
+
+  async getMemberMessages(societyId: string, params?: {
+    limit?: number
+    offset?: number
+    message_type?: string
+    is_urgent?: boolean
+    is_read?: boolean
+  }) {
+    const searchParams = new URLSearchParams()
+    
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          searchParams.append(key, value.toString())
+        }
+      })
+    }
+    
+    const query = searchParams.toString()
+    return this.makeRequest(`/member-communication-api/societies/${societyId}/messages${query ? `?${query}` : ''}`)
+  }
+
+  async markMessageAsRead(messageId: string) {
+    return this.makeRequest(`/member-communication-api/messages/${messageId}/read`, {
+      method: 'POST',
+    })
+  }
+
+  async markAllMessagesAsRead(societyId: string) {
+    return this.makeRequest(`/member-communication-api/societies/${societyId}/messages/read-all`, {
+      method: 'POST',
+    })
+  }
+
+  async getUnreadMessageCount(societyId: string) {
+    return this.makeRequest(`/member-communication-api/societies/${societyId}/messages/unread-count`)
+  }
+
+  async checkMemberStatus(societyId: string) {
+    return this.makeRequest(`/member-communication-api/societies/${societyId}/member-status`)
+  }
 }
 
 export const campusAPI = new CampusConnectAPI()
@@ -526,5 +581,26 @@ export interface SocietyInvitation {
   societies?: {
     id: string
     name: string
+  }
+}
+
+// Member Communication Interfaces
+export interface MemberSocietyMessage {
+  id: string
+  society_id: string
+  sender_user_id: string
+  message_type: 'message' | 'announcement' | 'feedback'
+  subject?: string
+  content: string
+  is_read: boolean
+  is_urgent: boolean
+  parent_message_id?: string
+  created_at: string
+  updated_at: string
+  sender_profile?: {
+    id: string
+    name?: string
+    email: string
+    avatar_url?: string
   }
 }
