@@ -38,3 +38,4 @@ ON CONFLICT (name) DO UPDATE SET
 -- Comment on the update
 COMMENT ON TABLE institutes IS 'All IITs (Indian Institutes of Technology) for user selection during signup';
 
+

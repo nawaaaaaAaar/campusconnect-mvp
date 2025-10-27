@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { campusAPI, type Society, type Post } from '../lib/api'
+import { useAuth } from '../contexts/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card'
 import { Button } from './ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { Badge } from './ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import { Separator } from './ui/separator'
-import { Users, CheckCircle, UserPlus, UserMinus, MapPin, Calendar, Globe, Mail, Loader2, MessageCircle, Heart, Share2, Bookmark } from 'lucide-react'
+import { Users, CheckCircle, UserPlus, UserMinus, MapPin, Calendar, Globe, Mail, Loader2, MessageCircle, Heart, Share2, Bookmark, Settings } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
 import { MemberSocietyCommunication } from './MemberSocietyCommunication'
+import { SocietyMemberManagement } from './society/SocietyMemberManagement'
 
 interface SocietyProfileProps {
   societyId: string
@@ -47,6 +49,7 @@ interface PostWithDetails extends Post {
 
 export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [society, setSociety] = useState<Society | null>(null)
   const [members, setMembers] = useState<SocietyMember[]>([])
   const [posts, setPosts] = useState<PostWithDetails[]>([])
@@ -55,6 +58,7 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
   const [membersLoading, setMembersLoading] = useState(false)
   const [postsLoading, setPostsLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [showMemberManagement, setShowMemberManagement] = useState(false)
 
   const loadSocietyData = useCallback(async () => {
     setLoading(true)
@@ -168,6 +172,9 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
       setActionLoading(false)
     }
   }
+
+  // Check if current user is the society owner
+  const isSocietyOwner = user && society?.owner_user_id === user.id
 
   if (loading) {
     return (
@@ -508,12 +515,27 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
         </TabsContent>
 
         <TabsContent value="members" className="mt-6">
+          {/* Members Management Header */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Users className="h-5 w-5" />
-                <span>Society Members ({membersCount})</span>
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>Society Members ({membersCount})</span>
+                </CardTitle>
+                {/* Owner Controls */}
+                {isSocietyOwner && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowMemberManagement(true)}
+                    className="flex items-center space-x-2"
+                  >
+                    <Settings className="h-4 w-4" />
+                    <span>Manage Members</span>
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {membersLoading ? (
@@ -554,10 +576,41 @@ export function SocietyProfile({ societyId, onBack }: SocietyProfileProps) {
                 <div className="text-center py-8">
                   <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <p className="text-gray-600">No members to display</p>
+                  {isSocietyOwner && (
+                    <p className="text-sm text-gray-500 mt-1">
+                      Use "Manage Members" to invite new members
+                    </p>
+                  )}
                 </div>
               )}
             </CardContent>
           </Card>
+
+          {/* Member Management Modal for Owners */}
+          {isSocietyOwner && showMemberManagement && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-6 border-b">
+                  <h2 className="text-xl font-semibold">
+                    Member Management - {society?.name}
+                  </h2>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setShowMemberManagement(false)}
+                  >
+                    ×
+                  </Button>
+                </div>
+                <div className="p-6">
+                  <SocietyMemberManagement 
+                    societyId={societyId}
+                    onClose={() => setShowMemberManagement(false)}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="communication" className="mt-6">

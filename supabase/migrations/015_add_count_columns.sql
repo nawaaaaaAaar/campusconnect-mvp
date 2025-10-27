@@ -25,3 +25,4 @@ COMMENT ON COLUMN posts.likes_count IS 'Denormalized count of likes, updated by 
 COMMENT ON COLUMN posts.comments_count IS 'Denormalized count of comments, updated by trigger';
 
 
+

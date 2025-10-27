@@ -5,12 +5,13 @@ import { BottomNavigation } from '../components/BottomNavigation'
 import { HomeFeed } from '../components/HomeFeed'
 import { SocietiesDiscovery } from '../components/SocietiesDiscovery'
 import { NotificationsFeed } from '../components/NotificationsFeed'
+import { ReceivedInvitations } from '../components/ReceivedInvitations'
 import { PostCreationForm } from '../components/PostCreationForm'
 import { SearchBar } from '../components/SearchBar'
 import { ProfileSettings } from '../components/ProfileSettings'
 import { Button } from '../components/ui/button'
-import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs'
-import { Home, Users, Bell } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs'
+import { Home, Users, Bell, Mail } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { signOut, getUserProfile } from '../lib/supabase'
 import { toast } from 'sonner'
@@ -171,7 +172,29 @@ export function Dashboard() {
         {activeTab === 'home' && <HomeFeed />}
         {activeTab === 'discover' && <SocietiesDiscovery />}
         {activeTab === 'notifications' && (
-          <NotificationsFeed />
+          <div className="space-y-6">
+            {/* Sub-tabs for Notifications */}
+            <Tabs defaultValue="notifications" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="notifications" className="flex items-center space-x-2">
+                  <Bell className="h-4 w-4" />
+                  <span>Notifications</span>
+                </TabsTrigger>
+                <TabsTrigger value="invitations" className="flex items-center space-x-2">
+                  <Mail className="h-4 w-4" />
+                  <span>Invitations</span>
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="notifications" className="mt-0">
+                <NotificationsFeed />
+              </TabsContent>
+              
+              <TabsContent value="invitations" className="mt-0">
+                <ReceivedInvitations />
+              </TabsContent>
+            </Tabs>
+          </div>
         )}
       </main>
 

@@ -31,3 +31,4 @@ ON CONFLICT (name) DO UPDATE SET
   location = EXCLUDED.location,
   verified = EXCLUDED.verified;
 
+
