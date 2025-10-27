@@ -10,6 +10,7 @@ import { campusAPI } from '../lib/api'
 import { useAuth } from '../contexts/AuthContext'
 import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
+import { useNavigate } from 'react-router-dom'
 import { EditPostDialog } from './EditPostDialog'
 import { DeleteConfirmDialog } from './DeleteConfirmDialog'
 import { ReportDialog } from './ReportDialog'
@@ -67,6 +68,7 @@ interface Comment {
 
 export function HomeFeed() {
   const { profile, user } = useAuth()
+  const navigate = useNavigate()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(false)
   const [cursor, setCursor] = useState<string | null>(null)
@@ -384,7 +386,10 @@ export function HomeFeed() {
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
-                        <h3 className="font-semibold text-gray-900">
+                        <h3 
+                          className="font-semibold text-gray-900 hover:text-blue-600 cursor-pointer transition-colors"
+                          onClick={() => post.societies?.id && navigate(`/society/${post.societies.id}`)}
+                        >
                           {post.societies?.name || 'Unknown Society'}
                         </h3>
                         {post.societies?.verified && (

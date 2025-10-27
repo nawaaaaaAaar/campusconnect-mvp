@@ -2,11 +2,13 @@ import React, { useState } from 'react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
+import { Label } from '../ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs'
 import { Loader2, Mail, Eye, EyeOff, UserPlus, ArrowLeft } from 'lucide-react'
-import { signInWithEmail, signInWithGoogle } from '../../lib/supabase'
+import { signInWithEmail, signInWithPassword, signInWithGoogle } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { toast } from 'sonner'
+import { getAcademicEmailErrorMessage } from '../../lib/security'
 
 interface LoginFormProps {
   accountType: 'student' | 'society'
@@ -31,6 +33,13 @@ export function LoginForm({ accountType, onSwitchToOTP, onSwitchToSignup, onBack
       return
     }
 
+    // Academic email validation
+    const emailError = getAcademicEmailErrorMessage(email)
+    if (emailError) {
+      toast.error(emailError)
+      return
+    }
+
     setOtpLoading(true)
     try {
       await signInWithEmail(email)
@@ -48,6 +57,13 @@ export function LoginForm({ accountType, onSwitchToOTP, onSwitchToSignup, onBack
     e.preventDefault()
     if (!email || !password) {
       toast.error('Please enter both email and password')
+      return
+    }
+
+    // Academic email validation
+    const emailError = getAcademicEmailErrorMessage(email)
+    if (emailError) {
+      toast.error(emailError)
       return
     }
 

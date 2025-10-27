@@ -32,6 +32,57 @@ export function isValidEmail(email: string): boolean {
   return emailRegex.test(email)
 }
 
+// Academic email validation - only allow university emails
+export function isValidAcademicEmail(email: string): boolean {
+  if (!isValidEmail(email)) {
+    return false
+  }
+
+  // List of blocked personal email domains
+  const blockedDomains = [
+    'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 
+    'aol.com', 'icloud.com', 'live.com', 'msn.com',
+    'yandex.com', 'mail.com', 'protonmail.com', 'gmx.com'
+  ]
+
+  const domain = email.split('@')[1].toLowerCase()
+
+  // Check if email is from a blocked personal domain
+  if (blockedDomains.includes(domain)) {
+    return false
+  }
+
+  // Allow academic emails by checking for common academic indicators
+  const academicIndicators = [
+    // Common academic domains
+    '.edu', '.ac.', 'edu.', 'ac.',
+    // IIT domains
+    'iit', 'iitm', 'iitb', 'iitd', 'iitk', 'iitg', 'iitr', 'iith', 'iiti', 'iitj', 'iitp',
+    // NIT domains  
+    'nit', 'nitd', 'nitk', 'nitw', 'nitc', 'nits', 'nitj', 'nitr', 'nitp',
+    // University domains
+    'university', 'college', 'edu', 'ac.in', 'edu.in', 'ac.uk', 'edu.au', 'edu.ca'
+  ]
+
+  // Check if domain contains academic indicators
+  return academicIndicators.some(indicator => 
+    domain.includes(indicator.toLowerCase())
+  )
+}
+
+// Get academic email validation error message
+export function getAcademicEmailErrorMessage(email: string): string {
+  if (!isValidEmail(email)) {
+    return 'Please enter a valid email address'
+  }
+
+  if (!isValidAcademicEmail(email)) {
+    return 'Please use your university/college email address. Personal email providers like Gmail, Yahoo, etc. are not allowed.'
+  }
+
+  return ''
+}
+
 // Password strength validation
 export function validatePassword(password: string): {
   isValid: boolean

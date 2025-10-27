@@ -2,10 +2,12 @@ import React, { useState } from 'react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card'
+import { Label } from '../ui/label'
 import { Loader2, Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { signInWithGoogle, createOrUpdateProfile } from '../../lib/supabase'
 import { toast } from 'sonner'
+import { getAcademicEmailErrorMessage } from '../../lib/security'
 
 interface SignupFormProps {
   accountType: 'student' | 'society'
@@ -39,6 +41,13 @@ export function SignupForm({ accountType, onBack, onSuccess }: SignupFormProps) 
 
     if (password.length < 6) {
       toast.error('Password must be at least 6 characters long')
+      return
+    }
+
+    // Academic email validation
+    const emailError = getAcademicEmailErrorMessage(email)
+    if (emailError) {
+      toast.error(emailError)
       return
     }
 
