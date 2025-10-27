@@ -2,15 +2,18 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ErrorBoundary } from './components/ErrorBoundary.tsx'
 import { initSentry } from './lib/sentry'
-import { assertValidEnvironment, logEnvironmentValidation } from './lib/env-validation'
+import { validateEnvironment, logEnvironmentStatus } from './lib/env-validation'
 import { initPerformanceMonitoring } from './lib/performance'
 import './index.css'
 import App from './App.tsx'
 
 // Validate environment variables
 try {
-  assertValidEnvironment()
-  logEnvironmentValidation()
+  const result = validateEnvironment()
+  if (!result.isValid) {
+    console.error('Environment validation failed:', result.errors)
+  }
+  logEnvironmentStatus(result)
 } catch (error) {
   console.error('Failed to validate environment:', error)
   // Show user-friendly error

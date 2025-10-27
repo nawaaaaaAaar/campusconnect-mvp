@@ -15,13 +15,7 @@ import './App.css'
 
 function App() {
   return (
-    <ErrorBoundary
-      onError={(error, errorInfo) => {
-        // Log error to external service
-        console.error('Global error caught:', error, errorInfo)
-        // TODO: Send to Sentry or other error tracking service
-      }}
-    >
+    <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
           <div className="App">

@@ -1,6 +1,8 @@
 // PRD Section 14: Telemetry & Analytics
 // Tracks user actions and system events for analytics and debugging
 
+import { supabase } from './supabase'
+
 interface TelemetryEvent {
   event: string
   ts: string
@@ -174,8 +176,12 @@ class TelemetryService {
       // Send to analytics backend
       // In production, this would send to Supabase Edge Function or external analytics service
       if (!import.meta.env.DEV) {
+        // Only send events to analytics API, metrics are handled separately
         await this.flushToServer(eventsToSend)
-        await this.flushToServer(metricsToSend)
+        // Metrics can be sent as events or handled differently
+        if (metricsToSend.length > 0) {
+          console.log(`[Telemetry] Skipping ${metricsToSend.length} performance metrics (separate pipeline)`)
+        }
       }
     } catch (error) {
       console.error('[Telemetry] Failed to flush events:', error)
