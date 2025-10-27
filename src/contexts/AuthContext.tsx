@@ -13,6 +13,18 @@ interface UserProfile {
   created_at: string
   updated_at?: string
   is_admin?: boolean // Admin flag
+  bio?: string
+  society_name?: string
+  society_category?: string
+  society_description?: string
+  phone?: string
+  location?: string
+  year?: string
+  interests?: string[]
+  website?: string
+  linkedin?: string
+  twitter?: string
+  verified?: boolean
   stats?: {
     societies_member_of: number
     societies_following: number
