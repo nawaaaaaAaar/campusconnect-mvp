@@ -28,6 +28,7 @@ interface UserProfile {
   society_description?: string
   verified: boolean
   created_at: string
+  updated_at?: string
 }
 
 interface ProfileSettingsProps {
